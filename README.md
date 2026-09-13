@@ -17,7 +17,7 @@ $env:NEXT_PUBLIC_SUPABASE_URL="https://yncfmpbapocdxcmqdeke.supabase.co"
 npm run web:dev
 ```
 
-El APK release firmado actual está en `apps/web/public/downloads/microprestamos.apk`; su checksum y metadatos están junto al binario.
+El APK release firmado actual está publicado en [GitHub Releases](https://github.com/argmicroprestamos-maker/microprestamos/releases/tag/v0.1.1). El artefacto local se conserva solo para la verificación del build; la web descarga el release público.
 
 ## Pruebas
 

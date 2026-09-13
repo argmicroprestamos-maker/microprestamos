@@ -45,7 +45,7 @@
 ## Bloqueos antes de producción
 
 - Respaldar keystore de release ubicado fuera del repo en `C:\Users\danif\MicroPrestamos-secrets\microprestamos-release.jks`.
-- Configurar Auth/MFA, usuario admin y secretos (`N8N_SHARED_SECRET`, variables Vercel).
+- Configurar Auth/MFA, un usuario admin y el secreto `N8N_SHARED_SECRET`.
 - Instalación en dispositivo Android bloqueada por `INSTALL_FAILED_USER_RESTRICTED`; requiere habilitar instalación USB en el dispositivo.
 - Configurar un entorno Vercel comercial antes de recibir clientes reales.
 - Mostrar comprobantes de préstamos activos en Android una vez exista un préstamo desembolsado de prueba.
