@@ -6,7 +6,7 @@
 | Fórmula MVP | Interés plano fijo; cargos 0 | Validación legal confirmada por el propietario; evidencia fuera del repositorio |
 | Periodicidad | Mensual | Confirmado para MVP |
 | Aprobación | Humana, con roles `analista` y `cobranzas` | Implementado en modelo y API |
-| Automatización | n8n/WhatsApp fuera de alcance inicial | Contrato Edge Function preparado |
+| Automatización | Alta asistida por n8n/WhatsApp | Primera máquina conversacional y workflow de desarrollo implementados; falta Meta real |
 | Desembolso | Registro manual; no se inicia transferencia | Confirmado por seguridad |
 | Identidad | Supabase Auth; OTP telefónico mediante n8n | Falta URL y secreto del webhook n8n |
 | Titular legal | Razón social, CUIT y domicilio pendientes | Requiere decisión del propietario |

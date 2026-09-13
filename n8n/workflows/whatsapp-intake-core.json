@@ -1,0 +1,80 @@
+{
+  "id": "MPWhatsappIntake1",
+  "name": "MicroPrestamos - WhatsApp Intake Core",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "microprestamos/whatsapp/inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ce9f73be-3318-4a73-9e53-824f66b0f3a9",
+      "name": "Entrada WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, 0],
+      "webhookId": "7c517ac7-9b87-4fd1-9c8e-91a28f6d0640"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst source = $json.body ?? $json;\nconst value = source.entry?.[0]?.changes?.[0]?.value;\nconst message = value?.messages?.[0];\nconst contact = value?.contacts?.[0];\nconst interactiveText = message?.interactive?.button_reply?.title ?? message?.interactive?.list_reply?.title;\nconst payload = message ? {\n  wa_id: contact?.wa_id ?? message.from,\n  message_id: message.id,\n  message_type: message.type ?? 'unknown',\n  text: message.text?.body ?? interactiveText ?? '',\n  media_id: message.image?.id ?? message.document?.id ?? '',\n  mime_type: message.image?.mime_type ?? message.document?.mime_type ?? '',\n  file_name: message.document?.filename ?? ''\n} : {\n  wa_id: source.wa_id,\n  message_id: source.message_id,\n  message_type: source.message_type ?? 'text',\n  text: source.text ?? '',\n  media_id: source.media_id ?? '',\n  mime_type: source.mime_type ?? '',\n  file_name: source.file_name ?? ''\n};\nif (!payload.wa_id || !payload.message_id) throw new Error('Evento de WhatsApp sin wa_id o message_id');\nconst body = JSON.stringify(payload);\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst nonce = crypto.createHash('sha256').update(payload.message_id).digest('hex').slice(0, 32);\nconst secret = $env.N8N_SHARED_SECRET;\nif (!secret) throw new Error('Falta N8N_SHARED_SECRET');\nconst signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${nonce}.${body}`).digest('hex');\nreturn [{ json: { requestBody: payload, rawBody: body, headers: { timestamp, nonce, signature } } }];"
+      },
+      "id": "5c9f2f50-d72e-4ecf-94fd-ef6a62adecfb",
+      "name": "Normalizar y firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-380, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_INTEGRATION_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "content-type", "value": "application/json" },
+            { "name": "x-integration-secret", "value": "={{ $env.N8N_SHARED_SECRET }}" },
+            { "name": "x-integration-timestamp", "value": "={{ $json.headers.timestamp }}" },
+            { "name": "x-integration-nonce", "value": "={{ $json.headers.nonce }}" },
+            { "name": "x-integration-signature", "value": "={{ $json.headers.signature }}" },
+            { "name": "idempotency-key", "value": "={{ $json.headers.nonce }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "5f19bb7d-e619-489a-92a6-f5f021c8af03",
+      "name": "Supabase conversación",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "e2bdc86c-e194-42de-b23e-a81e5fa12570",
+      "name": "Responder prueba",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [140, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Entrada WhatsApp": { "main": [[{ "node": "Normalizar y firmar", "type": "main", "index": 0 }]] },
+    "Normalizar y firmar": { "main": [[{ "node": "Supabase conversación", "type": "main", "index": 0 }]] },
+    "Supabase conversación": { "main": [[{ "node": "Responder prueba", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "saveDataErrorExecution": "none", "saveDataSuccessExecution": "none", "saveManualExecutions": false },
+  "versionId": "9aae46ee-b4cc-4d90-a495-74647bcc41d9",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

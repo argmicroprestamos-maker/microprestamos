@@ -1,10 +1,19 @@
 openapi: 3.0.3
 info:
   title: MicroPréstamos API
-  version: 0.3.0
+  version: 0.4.0
 servers:
   - url: https://yncfmpbapocdxcmqdeke.supabase.co/functions/v1
 paths:
+  /integration-v1/conversations/inbound:
+    post:
+      summary: Procesa un mensaje entrante normalizado de WhatsApp
+      description: Mantiene el estado del flujo asistido y devuelve los mensajes que n8n debe enviar. Nunca aprueba ni desembolsa.
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/WhatsAppInbound' } } }
+      responses: {'200': {description: Next conversation step}, '401': {description: Invalid signature}, '422': {description: Invalid event}}
   /integration-v1/quotes:
     post:
       summary: Calcula una oferta no vinculante
@@ -94,6 +103,17 @@ components:
     IdempotencyKey: {type: apiKey, in: header, name: idempotency-key}
     ClientBearer: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
+    WhatsAppInbound:
+      type: object
+      required: [wa_id, message_id, message_type]
+      properties:
+        wa_id: {type: string, pattern: '^\\+?[1-9][0-9]{7,14}$'}
+        message_id: {type: string, minLength: 1, maxLength: 200}
+        message_type: {type: string, enum: [text, image, document, interactive, unknown]}
+        text: {type: string, maxLength: 2000}
+        media_id: {type: string, maxLength: 500}
+        mime_type: {type: string, maxLength: 100}
+        file_name: {type: string, maxLength: 255}
     QuoteRequest:
       type: object
       required: [principal, interest_rate_percent, installment_count]
