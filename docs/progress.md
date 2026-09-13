@@ -14,7 +14,7 @@
 - Manual operativo agregado en `docs/operations.md` con modo demo, revisión, incidentes, backup/restauración y rollback.
 - Matriz de decisiones de fase 0 documentada en `docs/decisions.md`, incluyendo bloqueos legales y de cuentas.
 - Auditoría de secretos: no hay keystore ni claves privadas en Git; `npm audit --omit=dev` reporta 0 vulnerabilidades.
-- Supabase verificado: 5 Edge Functions ACTIVE y 11 migraciones registradas en el proyecto.
+- Supabase verificado: 5 Edge Functions ACTIVE y 12 migraciones registradas en el proyecto; el webhook n8n arranca y rechaza llamadas no autenticadas con 401.
 - Build Next.js verificado.
 - Build Android debug y release unsigned verificados con Gradle 8.10.2/JDK 17.
 - APK release `0.1.1` firmado y verificado; publicado en `https://github.com/argmicroprestamos-maker/microprestamos/releases/tag/v0.1.1` con SHA-256 `006E362FAC3E786B61F4298464F5DD7D5CC7F3872539E51AF47EC48D1AAEE80A`.
@@ -35,7 +35,7 @@
 - Validación de checksum CBU añadida en Postgres y aplicada al alta/actualización de cuentas bancarias.
 - Panel de operaciones ampliado con revisión/aprobación/rechazo auditados, creación de préstamo y cuotas, registro manual de desembolso ya realizado y distribución de pagos por cuota; cada operación se vuelve a autorizar en la base de datos.
 - Sesión Android cifrada con Android Keystore, refresh token, restauración al reabrir, consulta/actualización del estado de solicitudes y cronograma de cuotas.
-- Suite pgTAP ampliada para cálculo, checksum CBU, índices e invariantes de triggers; se ejecutará automáticamente en CI con Supabase local.
+- Suite pgTAP ampliada para cálculo, checksum CBU, índices e invariantes de triggers; la ejecución remota de GitHub Actions `verify` pasó con los trabajos web, base y Android.
 - Cabeceras web de seguridad configuradas: CSP con orígenes explícitos, HSTS, anti-frame, anti-MIME sniffing, política de permisos y referrer restrictiva.
 - Bucket de documentos restringido a 10 MB/JPEG/PNG/PDF; la API descarga cada archivo, comprueba firma MIME, tamaño y SHA-256 antes de registrarlo en el expediente.
 - Android valida localmente teléfono E.164, fecha real, CBU con checksum y contactos antes de enviar; cinco pruebas unitarias pasan.
@@ -50,5 +50,5 @@
 - Configurar un entorno Vercel comercial antes de recibir clientes reales.
 - Mostrar comprobantes de préstamos activos en Android una vez exista un préstamo desembolsado de prueba.
 - Crear usuarios/roles de prueba y configurar secretos (`ALLOWED_ORIGIN`, `N8N_SHARED_SECRET`) por entorno.
-- Ejecutar pruebas pgTAP/RLS y E2E contra Supabase local: Docker Desktop no está iniciado en este equipo; CI ya las configura en GitHub Actions.
+- Ejecutar una instalación física del APK y un recorrido E2E con usuarios de prueba una vez configurados Auth y el dispositivo; las pruebas unitarias/DB/CI ya están verdes.
 - Revisión legal y regulatoria obligatoria del plan antes de dinero real.
