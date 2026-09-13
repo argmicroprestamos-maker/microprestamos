@@ -1,0 +1,16 @@
+project_id = "yncfmpbapocdxcmqdeke"
+
+[functions.health]
+verify_jwt = false
+
+[functions.n8n-webhook]
+verify_jwt = false
+
+[functions.integration-v1]
+verify_jwt = false
+
+[functions.admin-api]
+verify_jwt = false
+
+[functions.client-api]
+verify_jwt = false

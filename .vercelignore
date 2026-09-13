@@ -1,0 +1,11 @@
+.git
+.codex
+node_modules
+apps/android
+brand
+docs
+packages
+scripts
+supabase
+CODEX_GOAL.md
+PLAN.md

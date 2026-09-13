@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: MicroPréstamos API
+  version: 0.3.0
+servers:
+  - url: https://yncfmpbapocdxcmqdeke.supabase.co/functions/v1
+paths:
+  /integration-v1/quotes:
+    post:
+      summary: Calcula una oferta no vinculante
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/QuoteRequest' } } }
+      responses: {'200': {description: OK}}
+  /integration-v1/applications:
+    post:
+      summary: Crea una solicitud idempotente
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      responses: {'201': {description: Created}}
+  /integration-v1/applications/{external_id}:
+    get:
+      summary: Consulta el estado de una solicitud creada por n8n
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      parameters: [{name: external_id, in: path, required: true, schema: {type: string, maxLength: 120}}]
+      responses: {'200': {description: OK}, '404': {description: Not found}}
+  /integration-v1/applications/{application_id}/submit:
+    post:
+      summary: Envía un expediente n8n completo a revisión humana
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      parameters: [{name: application_id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'200': {description: Submitted}, '409': {description: Incomplete or invalid state}}
+  /integration-v1/decisions:
+    post:
+      summary: Reservado; las decisiones automáticas están deshabilitadas en el MVP
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      responses: {'403': {description: Automated decisions disabled}}
+  /client-api/products:
+    get:
+      summary: Lista productos activos para el cliente autenticado
+      security: [{ ClientBearer: [] }]
+      responses: {'200': {description: OK}, '401': {description: Unauthorized}}
+  /client-api/profile:
+    post:
+      summary: Crea o actualiza el expediente personal y los dos contactos autorizados
+      security: [{ ClientBearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ClientProfileRequest' } } }
+      responses: {'201': {description: Saved}, '422': {description: Invalid profile}}
+  /client-api/documents:
+    post:
+      summary: Registra un documento ya subido al bucket privado del titular
+      security: [{ ClientBearer: [] }]
+      responses: {'201': {description: Created}, '409': {description: Profile or uploaded object missing}}
+  /client-api/applications:
+    get:
+      summary: Lista las solicitudes del cliente autenticado
+      security: [{ ClientBearer: [] }]
+      responses: {'200': {description: OK}}
+    post:
+      summary: Crea y envía una solicitud después de validar el expediente
+      security: [{ ClientBearer: [] }]
+      responses: {'201': {description: Created}, '409': {description: Incomplete application}}
+  /client-api/loans:
+    get:
+      summary: Devuelve los préstamos y el cronograma de cuotas del cliente autenticado
+      security: [{ ClientBearer: [] }]
+      responses: {'200': {description: OK}, '401': {description: Unauthorized}}
+  /admin-api/applications/{application_id}/decision:
+    post:
+      summary: Registra una decisión humana y crea el préstamo al aprobar
+      security: [{ ClientBearer: [] }]
+      parameters: [{name: application_id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'201': {description: Decision recorded}, '403': {description: Insufficient role}, '409': {description: Invalid state}}
+  /admin-api/loans/{loan_id}/disburse:
+    post:
+      summary: Registra una transferencia ya realizada; no inicia transferencias bancarias
+      security: [{ ClientBearer: [] }]
+      parameters: [{name: loan_id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'201': {description: Disbursement recorded}, '403': {description: Insufficient role}, '409': {description: Invalid state}}
+  /admin-api/loans/{loan_id}/payments:
+    post:
+      summary: Registra y distribuye un pago confirmado entre cuotas
+      security: [{ ClientBearer: [] }]
+      parameters: [{name: loan_id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'201': {description: Payment recorded}, '403': {description: Insufficient role}, '409': {description: Invalid state}}
+components:
+  securitySchemes:
+    IntegrationSecret: {type: apiKey, in: header, name: x-integration-secret}
+    IntegrationTimestamp: {type: apiKey, in: header, name: x-integration-timestamp, description: Unix epoch seconds; maximum clock skew is five minutes}
+    IntegrationNonce: {type: apiKey, in: header, name: x-integration-nonce, description: 16-128 URL-safe characters; must equal Idempotency-Key}
+    IntegrationSignature: {type: apiKey, in: header, name: x-integration-signature, description: Lowercase hex HMAC-SHA-256 of timestamp.nonce.rawBody}
+    IdempotencyKey: {type: apiKey, in: header, name: idempotency-key}
+    ClientBearer: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    QuoteRequest:
+      type: object
+      required: [principal, interest_rate_percent, installment_count]
+      properties:
+        principal: {type: number, minimum: 1}
+        interest_rate_percent: {type: number, minimum: 0}
+        installment_count: {type: integer, minimum: 1, maximum: 24}
+        fees: {type: number, minimum: 0}
+    ClientProfileRequest:
+      type: object
+      required: [full_name, dni, birth_date, phone, contacts, cbu, holder_name, terms_version, privacy_version]
+      properties:
+        full_name: {type: string, minLength: 2, maxLength: 150}
+        dni: {type: string, pattern: '^[0-9]{7,11}$'}
+        birth_date: {type: string, format: date}
+        phone: {type: string, pattern: '^\\+[1-9][0-9]{7,14}$'}
+        contacts: {type: array, minItems: 2, maxItems: 2}
+        cbu: {type: string, pattern: '^[0-9]{22}$'}
+        holder_name: {type: string, minLength: 2}
+        terms_version: {type: string}
+        privacy_version: {type: string}

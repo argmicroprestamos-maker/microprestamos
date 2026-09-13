@@ -1,0 +1,8 @@
+'use client';
+import { useMemo, useState } from 'react';
+export default function LoanSimulator() {
+  const [amount, setAmount] = useState(10000); const [rate, setRate] = useState(10); const [count, setCount] = useState(3);
+  const calc = useMemo(() => { const interest = amount * rate / 100; const total = amount + interest; return { interest, total, installment: total / count }; }, [amount, rate, count]);
+  const money = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n);
+  return <div className="card" style={{ display: 'grid', gap: 14 }}><h2>Simulá tu préstamo</h2><label>Monto: {money(amount)}<input aria-label="Monto" type="range" min="1000" max="100000" step="1000" value={amount} onChange={e => setAmount(Number(e.target.value))} style={{ width: '100%' }} /></label><label>Interés plano: {rate}%<input aria-label="Interés" type="range" min="0" max="30" step="0.5" value={rate} onChange={e => setRate(Number(e.target.value))} style={{ width: '100%' }} /></label><label>Cuotas: {count}<input aria-label="Cuotas" type="range" min="1" max="24" value={count} onChange={e => setCount(Number(e.target.value))} style={{ width: '100%' }} /></label><div style={{ background: '#f0fdfa', padding: 14, borderRadius: 12 }}><p style={{ margin: 0 }}>Interés: <strong>{money(calc.interest)}</strong></p><p style={{ margin: '6px 0' }}>Total estimado: <strong>{money(calc.total)}</strong></p><p style={{ margin: 0 }}>Cuota estimada: <strong>{money(calc.installment)}</strong></p></div><small style={{ color: '#64748b' }}>Simulación informativa. La evaluación y aprobación no están garantizadas.</small></div>;
+}

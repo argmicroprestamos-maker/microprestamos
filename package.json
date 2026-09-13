@@ -1,0 +1,1 @@
+{"name":"microprestamos","private":true,"workspaces":["apps/web"],"scripts":{"web:dev":"npm --workspace apps/web run dev","web:build":"npm --workspace apps/web run build","smoke":"powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1"}}

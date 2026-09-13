@@ -1,0 +1,21 @@
+-- Ejecutar con `supabase test db` contra un proyecto local. Todo queda aislado por rollback.
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(11);
+
+select is((private.calculate_flat_loan(10000, 10, 3, 0)->>'total_due')::numeric, 11000::numeric, 'flat interest total');
+select is((private.calculate_flat_loan(10000, 10, 3, 0)->>'installment_amount')::numeric, 3666.67::numeric, 'rounded installment');
+select is((private.calculate_flat_loan(1, 10, 3, 0)->>'interest_amount')::numeric, 0.10::numeric, 'small principal rounds deterministically');
+select throws_ok($$select private.calculate_flat_loan(-1, 10, 3, 0)$$, 'P0001', 'invalid loan parameters', 'rejects negative principal');
+
+select ok(private.is_valid_cbu('1111111911111111111117'), 'accepts a CBU with valid checksum');
+select ok(not private.is_valid_cbu('1111111911111111111118'), 'rejects invalid CBU checksum');
+select ok(not private.is_valid_cbu('0000000000000000000000'), 'rejects all-zero CBU');
+
+select has_index('private', 'emergency_contacts_client_position_uidx', 'contact position is unique');
+select has_index('private', 'client_documents_required_type_once', 'mandatory document types cannot be duplicated');
+select has_trigger('private', 'loan_applications', 'loan_applications_submission_guard', 'submission requirements are database-enforced');
+select has_trigger('private', 'loans', 'loans_status_guard', 'loan status transitions are database-enforced');
+
+select * from finish();
+rollback;
