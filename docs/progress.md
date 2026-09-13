@@ -41,14 +41,15 @@
 - Android valida localmente teléfono E.164, fecha real, CBU con checksum y contactos antes de enviar; cinco pruebas unitarias pasan.
 - La frontera n8n exige secreto, HMAC-SHA-256, timestamp de cinco minutos, nonce/idempotency key y límite de 30 solicitudes por minuto; el otorgamiento automatizado sigue deshabilitado.
 - La simulación Android invalida la cotización al editar el monto y exige recalcularla antes de enviar la solicitud.
+- Se creó `arg.microprestamos@gmail.com` como `superadmin` activo en Supabase Auth; requiere confirmar el correo antes del primer acceso.
 
 ## Bloqueos antes de producción
 
 - Respaldar keystore de release ubicado fuera del repo en `C:\Users\danif\MicroPrestamos-secrets\microprestamos-release.jks`.
-- Configurar Auth/MFA, un usuario admin y el secreto `N8N_SHARED_SECRET`.
+- Confirmar el correo del superadmin y completar MFA después del primer acceso.
+- Configurar la URL y el secreto del webhook n8n que enviará los SMS OTP.
 - Instalación en dispositivo Android bloqueada por `INSTALL_FAILED_USER_RESTRICTED`; requiere habilitar instalación USB en el dispositivo.
 - Configurar un entorno Vercel comercial antes de recibir clientes reales.
 - Mostrar comprobantes de préstamos activos en Android una vez exista un préstamo desembolsado de prueba.
 - Crear usuarios/roles de prueba y configurar secretos (`ALLOWED_ORIGIN`, `N8N_SHARED_SECRET`) por entorno.
 - Ejecutar una instalación física del APK y un recorrido E2E con usuarios de prueba una vez configurados Auth y el dispositivo; las pruebas unitarias/DB/CI ya están verdes.
-- Revisión legal y regulatoria obligatoria del plan antes de dinero real.

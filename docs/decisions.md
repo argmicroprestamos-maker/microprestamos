@@ -3,20 +3,20 @@
 | Tema | Decisión actual | Estado / responsable |
 |---|---|---|
 | Mercado y moneda | Argentina, ARS | Confirmado para MVP técnico |
-| Fórmula MVP | Interés plano fijo; cargos 0 | Requiere validación legal antes de oferta |
+| Fórmula MVP | Interés plano fijo; cargos 0 | Validación legal confirmada por el propietario; evidencia fuera del repositorio |
 | Periodicidad | Mensual | Confirmado para MVP |
 | Aprobación | Humana, con roles `analista` y `cobranzas` | Implementado en modelo y API |
 | Automatización | n8n/WhatsApp fuera de alcance inicial | Contrato Edge Function preparado |
 | Desembolso | Registro manual; no se inicia transferencia | Confirmado por seguridad |
-| Identidad | Supabase Auth; OTP telefónico pendiente | Falta proveedor y credenciales |
+| Identidad | Supabase Auth; OTP telefónico mediante n8n | Falta URL y secreto del webhook n8n |
 | Titular legal | Razón social, CUIT y domicilio pendientes | Requiere decisión del propietario |
-| Cumplimiento | Revisión BCRA, consumidor y datos personales pendiente | Requiere abogado/contador |
+| Cumplimiento | Revisión legal confirmada por el propietario | Evidencia fuera del repositorio |
 | Tasas legales | TNA, TEA, CFT y CFTEA pendientes | No publicar como oferta hasta validación |
-| Hosting | Vercel; dominio solicitado no disponible | Usar alias alternativo o nuevo dominio |
+| Hosting | Vercel `microprestamos.vercel.app` | Producción publicada |
 | Base de datos | Supabase `yncfmpbapocdxcmqdeke`, esquema privado | Aplicado y verificado |
-| Repositorio | GitHub `argmicroprestamos-maker` | PAT actual no permite crear repositorio |
+| Repositorio | GitHub `argmicroprestamos-maker/microprestamos` | Código, release y CI publicados |
 | Firma Android | Keystore local fuera del repo | Respaldar antes de futuras versiones |
 
 ## Regla de bloqueo
 
-Mientras titular legal, textos aprobados, fórmula regulatoria, proveedor OTP y entorno de producción no estén definidos, el sistema debe permanecer en modo demo (`real_money_enabled = false`).
+Mientras no esté configurado el webhook/secret de SMS de n8n y no exista un proceso real de desembolso y conciliación, el sistema debe permanecer en modo demo (`real_money_enabled = false`).
