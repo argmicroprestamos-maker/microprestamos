@@ -6,6 +6,8 @@
 | Fórmula MVP | Interés plano fijo; cargos 0 | Validación legal confirmada por el propietario; evidencia fuera del repositorio |
 | Periodicidad | Mensual | Confirmado para MVP |
 | Aprobación | Humana, con roles `analista` y `cobranzas` | Implementado en modelo y API |
+| Préstamos simultáneos | Máximo un préstamo abierto por cliente | Confirmado; guardia de base de datos preparada |
+| Evaluación WhatsApp | Datos, empleo, actividad e ingreso mensual | Confirmado; no produce aprobación automática |
 | Automatización | Alta asistida por n8n y API casera de WhatsApp | Adaptador HTTP implementado; falta contrato y URL real de la API casera |
 | Desembolso | Registro manual; no se inicia transferencia | Confirmado por seguridad |
 | Identidad | Supabase Auth; OTP telefónico mediante n8n | Falta URL y secreto del webhook n8n |

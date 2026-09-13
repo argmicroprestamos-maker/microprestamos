@@ -1,7 +1,7 @@
 -- Ejecutar con `supabase test db` contra un proyecto local. Todo queda aislado por rollback.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(19);
 
 select is((private.calculate_flat_loan(10000, 10, 3, 0)->>'total_due')::numeric, 11000::numeric, 'flat interest total');
 select is((private.calculate_flat_loan(10000, 10, 3, 0)->>'installment_amount')::numeric, 3666.67::numeric, 'rounded installment');
@@ -20,6 +20,10 @@ select has_table('private', 'whatsapp_conversations', 'WhatsApp conversations ar
 select has_table('private', 'whatsapp_message_receipts', 'WhatsApp message receipts are private');
 select has_index('private', 'whatsapp_conversations', 'whatsapp_conversations_wa_id_key', 'WhatsApp identity is unique');
 select has_trigger('private', 'whatsapp_conversations', 'whatsapp_conversations_updated_at', 'conversation timestamps are maintained');
+select has_table('private', 'whatsapp_outbox', 'WhatsApp delivery outbox is private');
+select has_trigger('private', 'whatsapp_outbox', 'whatsapp_outbox_updated_at', 'outbox timestamps are maintained');
+select has_index('private', 'loans', 'loans_one_open_per_client', 'only one open loan is allowed per client');
+select has_function('private', 'review_whatsapp_application', array['uuid', 'uuid', 'text', 'text'], 'WhatsApp decisions require the reviewed function');
 
 select * from finish();
 rollback;

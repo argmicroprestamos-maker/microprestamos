@@ -7,10 +7,12 @@ Este módulo inicia el canal asistido de MicroPréstamos. El workflow recibe un 
 1. El bot pregunta si el cliente puede instalar la app o necesita asistencia por WhatsApp.
 2. Si elige app, entrega `https://microprestamos.vercel.app/descargar` y mantiene disponible la asistencia.
 3. Si elige WhatsApp, pide consentimiento explícito.
-4. Recopila datos personales, exactamente dos contactos, CBU y titular.
-5. Solicita DNI frente, DNI dorso y constancia de CBU.
-6. Pide el monto y muestra un resumen enmascarado.
-7. La confirmación pasa el caso a revisión humana; este flujo no aprueba ni desembolsa dinero.
+4. Recopila datos personales, situación laboral, detalle de empleo o actividad e ingreso mensual.
+5. Recopila exactamente dos contactos, CBU y titular.
+6. Solicita DNI frente, DNI dorso y constancia de CBU.
+7. Pide el monto y muestra un resumen enmascarado.
+8. La confirmación deja la solicitud pendiente de aprobación humana.
+9. La decisión humana se guarda en una bandeja de salida y n8n la comunica por la API casera.
 
 En cualquier momento, `ASESOR`, `HUMANO`, `OPERADOR` o `AYUDA` deriva la conversación.
 
@@ -21,12 +23,13 @@ En cualquier momento, `ASESOR`, `HUMANO`, `OPERADOR` o `AYUDA` deriva la convers
 3. Abrir `http://localhost:5678`, crear el propietario local e importar los workflows de `workflows/`.
 4. Activar el workflow y enviar `fixtures/inbound-text.json` al webhook de prueba.
 
-Hay dos workflows separados:
+Hay tres workflows separados:
 
 - `whatsapp-intake-core.json` usa un Webhook genérico para probar el diálogo sin Meta.
 - `whatsapp-intake-production.json` usa un webhook y peticiones HTTP para adaptarse a la API casera de WhatsApp.
+- `whatsapp-outbox-production.json` consulta decisiones pendientes, las envía por la API casera y confirma la entrega.
 
-El workflow de producción se importa inactivo y debe permanecer así hasta cargar las credenciales y la URL pública.
+Los workflows de producción se importan inactivos y deben permanecer así hasta cargar la autenticación, la URL de la API y el mismo secreto HMAC en Supabase.
 
 ## Configuración pendiente de la API casera
 

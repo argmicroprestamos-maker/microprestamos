@@ -1,0 +1,139 @@
+{
+  "id": "MPWhatsappOutbox1",
+  "name": "MicroPrestamos - Enviar decisiones WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 1 }] }
+      },
+      "id": "b62db7f-070a-459a-bec5-572cc32dc63e",
+      "name": "Cada minuto",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-700, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst body = JSON.stringify({ limit: 5 });\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst nonce = crypto.randomUUID().replace(/-/g, '');\nconst secret = $env.N8N_SHARED_SECRET;\nif (!secret) throw new Error('Falta N8N_SHARED_SECRET');\nconst signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${nonce}.${body}`).digest('hex');\nreturn [{ json: { rawBody: body, headers: { timestamp, nonce, signature } } }];"
+      },
+      "id": "6f1b1ebc-7fbe-4d07-91e8-a26616ec0e26",
+      "name": "Firmar reclamo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-470, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_INTEGRATION_BASE_URL + '/conversations/outbox/claim' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "content-type", "value": "application/json" },
+          { "name": "x-integration-secret", "value": "={{ $env.N8N_SHARED_SECRET }}" },
+          { "name": "x-integration-timestamp", "value": "={{ $json.headers.timestamp }}" },
+          { "name": "x-integration-nonce", "value": "={{ $json.headers.nonce }}" },
+          { "name": "x-integration-signature", "value": "={{ $json.headers.signature }}" },
+          { "name": "idempotency-key", "value": "={{ $json.headers.nonce }}" }
+        ] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "997339dc-1345-4e8d-a0da-ac821a47ca90",
+      "name": "Reclamar pendientes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = Array.isArray($json.messages) ? $json.messages : [];\nreturn messages.map((message) => ({ json: { id: message.id, rawBody: JSON.stringify(message.payload) } }));"
+      },
+      "id": "4f69bb1d-208b-4d33-8826-a5f138354be8",
+      "name": "Preparar envios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-10, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CUSTOM_WA_API_BASE_URL + $env.CUSTOM_WA_API_SEND_PATH }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "content-type", "value": "application/json" },
+          { "name": "={{ $env.CUSTOM_WA_API_AUTH_HEADER }}", "value": "={{ $env.CUSTOM_WA_API_AUTH_VALUE }}" }
+        ] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": {
+          "timeout": 15000,
+          "response": { "response": { "fullResponse": true, "neverError": true, "responseFormat": "json" } }
+        }
+      },
+      "id": "4f8d7254-3bd8-4e53-80d4-3ef2811ea047",
+      "name": "Enviar decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst delivery = $('Preparar envios').item.json;\nconst statusCode = Number($json.statusCode ?? 0);\nconst sent = statusCode >= 200 && statusCode < 300;\nconst error = sent ? '' : JSON.stringify($json.body ?? $json).slice(0, 500);\nconst body = JSON.stringify({ sent, error });\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst nonce = crypto.randomUUID().replace(/-/g, '');\nconst secret = $env.N8N_SHARED_SECRET;\nconst signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${nonce}.${body}`).digest('hex');\nreturn [{ json: { id: delivery.id, rawBody: body, headers: { timestamp, nonce, signature } } }];"
+      },
+      "id": "7b8d8c2c-063f-4a8b-a21b-bd4e90dd91bf",
+      "name": "Firmar resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_INTEGRATION_BASE_URL + '/conversations/outbox/' + $json.id + '/complete' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "content-type", "value": "application/json" },
+          { "name": "x-integration-secret", "value": "={{ $env.N8N_SHARED_SECRET }}" },
+          { "name": "x-integration-timestamp", "value": "={{ $json.headers.timestamp }}" },
+          { "name": "x-integration-nonce", "value": "={{ $json.headers.nonce }}" },
+          { "name": "x-integration-signature", "value": "={{ $json.headers.signature }}" },
+          { "name": "idempotency-key", "value": "={{ $json.headers.nonce }}" }
+        ] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "9ddcf972-9eca-4e6d-bbfa-b87ab69fbada",
+      "name": "Confirmar entrega",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cada minuto": { "main": [[{ "node": "Firmar reclamo", "type": "main", "index": 0 }]] },
+    "Firmar reclamo": { "main": [[{ "node": "Reclamar pendientes", "type": "main", "index": 0 }]] },
+    "Reclamar pendientes": { "main": [[{ "node": "Preparar envios", "type": "main", "index": 0 }]] },
+    "Preparar envios": { "main": [[{ "node": "Enviar decision", "type": "main", "index": 0 }]] },
+    "Enviar decision": { "main": [[{ "node": "Firmar resultado", "type": "main", "index": 0 }]] },
+    "Firmar resultado": { "main": [[{ "node": "Confirmar entrega", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "versionId": "8ab40432-5a2e-4e10-9f52-a6a7c5b8d7c2",
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}

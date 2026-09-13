@@ -37,3 +37,18 @@ Deno.test('allows human handoff at any point', () => {
   assert(result.action?.type === 'human_handoff', 'should emit handoff action');
 });
 
+Deno.test('collects employment and income before emergency contacts', () => {
+  const employment = conversationStep('awaiting_employment_status', {}, { message_type: 'text', text: '1' });
+  assert(employment.state === 'awaiting_employment_detail', 'employees should identify their employer');
+  const detail = conversationStep(employment.state, employment.draft, { message_type: 'text', text: 'Comercio Centro, vendedor' });
+  assert(detail.state === 'awaiting_monthly_income', 'should request monthly income');
+  const income = conversationStep(detail.state, detail.draft, { message_type: 'text', text: '$850.000' });
+  assert(income.state === 'awaiting_contact_1_name', 'should continue with contacts');
+  assert(income.draft.monthly_income === 850000, 'should store normalized monthly income');
+});
+
+Deno.test('allows zero income without deciding the case automatically', () => {
+  const result = conversationStep('awaiting_monthly_income', { employment_status: 'unemployed' }, { message_type: 'text', text: '0' });
+  assert(result.state === 'awaiting_contact_1_name', 'human review should decide cases with no income');
+  assert(result.draft.monthly_income === 0, 'should store zero income');
+});

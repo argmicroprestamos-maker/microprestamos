@@ -62,13 +62,26 @@ export function conversationStep(state: string, currentDraft: Record<string, unk
   if (state === 'awaiting_dni') { const dni = text.replace(/\D/g, ''); if (!/^\d{7,11}$/.test(dni)) return reply(state, 'El DNI debe tener entre 7 y 11 números. Intentá nuevamente.'); draft.dni = dni; return reply('awaiting_birth_date', 'Indicá tu fecha de nacimiento con formato AAAA-MM-DD.'); }
   if (state === 'awaiting_birth_date') { if (!isValidDate(text)) return reply(state, 'Usá el formato AAAA-MM-DD, por ejemplo 1990-05-21.'); draft.birth_date = text; return reply('awaiting_address', 'Escribí tu domicilio completo.'); }
   if (state === 'awaiting_address') { if (text.length < 5 || text.length > 250) return reply(state, 'Ingresá un domicilio válido.'); draft.address = text; return reply('awaiting_email', 'Escribí tu correo electrónico o respondé OMITIR.'); }
-  if (state === 'awaiting_email') { if (!/^omitir$/i.test(text) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return reply(state, 'Ese correo no parece válido. Escribilo nuevamente o respondé OMITIR.'); draft.email = /^omitir$/i.test(text) ? null : text.toLowerCase(); return reply('awaiting_contact_1_name', 'Contacto de emergencia 1: nombre y apellido.'); }
+  if (state === 'awaiting_email') { if (!/^omitir$/i.test(text) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return reply(state, 'Ese correo no parece válido. Escribilo nuevamente o respondé OMITIR.'); draft.email = /^omitir$/i.test(text) ? null : text.toLowerCase(); return reply('awaiting_employment_status', '¿Cuál es tu situación laboral? Respondé 1 EMPLEADO, 2 INDEPENDIENTE, 3 JUBILADO/PENSIONADO, 4 SIN EMPLEO o 5 OTRO.'); }
+  if (state === 'awaiting_employment_status') {
+    const statuses: Record<string, string> = { '1': 'employed', empleado: 'employed', empleada: 'employed', '2': 'independent', independiente: 'independent', autonomo: 'independent', autónomo: 'independent', monotributista: 'independent', '3': 'retired', jubilado: 'retired', jubilada: 'retired', pensionado: 'retired', pensionada: 'retired', '4': 'unemployed', desempleado: 'unemployed', desempleada: 'unemployed', 'sin empleo': 'unemployed', '5': 'other', otro: 'other', otra: 'other' };
+    const employmentStatus = statuses[lower];
+    if (!employmentStatus) return reply(state, 'Elegí una opción: 1 EMPLEADO, 2 INDEPENDIENTE, 3 JUBILADO/PENSIONADO, 4 SIN EMPLEO o 5 OTRO.');
+    draft.employment_status = employmentStatus;
+    if (employmentStatus === 'employed') return reply('awaiting_employment_detail', 'Escribí el nombre de tu empleador y tu puesto.');
+    if (employmentStatus === 'independent') return reply('awaiting_employment_detail', 'Describí brevemente tu actividad independiente.');
+    if (employmentStatus === 'other') return reply('awaiting_employment_detail', 'Describí brevemente tu situación laboral o fuente de ingresos.');
+    draft.employment_detail = null;
+    return reply('awaiting_monthly_income', '¿Cuál es tu ingreso mensual aproximado en pesos? Escribí sólo números; si no tenés ingresos, escribí 0.');
+  }
+  if (state === 'awaiting_employment_detail') { if (text.length < 3 || text.length > 200) return reply(state, 'Ingresá una descripción válida de entre 3 y 200 caracteres.'); draft.employment_detail = text; return reply('awaiting_monthly_income', '¿Cuál es tu ingreso mensual aproximado en pesos? Escribí sólo números.'); }
+  if (state === 'awaiting_monthly_income') { const income = Number(text.replace(/[^0-9]/g, '')); if (!Number.isFinite(income) || income < 0 || income > 1_000_000_000) return reply(state, 'Ingresá un ingreso mensual válido, sólo números. Si no tenés ingresos, escribí 0.'); draft.monthly_income = income; return reply('awaiting_contact_1_name', 'Contacto de emergencia 1: nombre y apellido.'); }
   if (state === 'awaiting_contact_1_name') { if (text.length < 3) return reply(state, 'Ingresá el nombre completo del contacto.'); draft.contact_1_name = text; return reply('awaiting_contact_1_relationship', '¿Qué vínculo tiene con vos?'); }
   if (state === 'awaiting_contact_1_relationship') { if (text.length < 2) return reply(state, 'Indicá el vínculo, por ejemplo hermana o amigo.'); draft.contact_1_relationship = text; return reply('awaiting_contact_1_phone', 'Ingresá su teléfono con código de país, por ejemplo +54911…'); }
   if (state === 'awaiting_contact_1_phone') { if (!isPhone(text)) return reply(state, 'El teléfono debe incluir + y código de país.'); draft.contact_1_phone = text; return reply('awaiting_contact_2_name', 'Contacto de emergencia 2: nombre y apellido.'); }
   if (state === 'awaiting_contact_2_name') { if (text.length < 3) return reply(state, 'Ingresá el nombre completo del contacto.'); draft.contact_2_name = text; return reply('awaiting_contact_2_relationship', '¿Qué vínculo tiene con vos?'); }
   if (state === 'awaiting_contact_2_relationship') { if (text.length < 2) return reply(state, 'Indicá el vínculo.'); draft.contact_2_relationship = text; return reply('awaiting_contact_2_phone', 'Ingresá su teléfono con código de país.'); }
-  if (state === 'awaiting_contact_2_phone') { if (!isPhone(text)) return reply(state, 'El teléfono debe incluir + y código de país.'); draft.contact_2_phone = text; return reply('awaiting_cbu', 'Ingresá el CBU de 22 dígitos de una cuenta a tu nombre.'); }
+  if (state === 'awaiting_contact_2_phone') { if (!isPhone(text)) return reply(state, 'El teléfono debe incluir + y código de país.'); if (text === draft.contact_1_phone) return reply(state, 'Los dos contactos deben tener teléfonos diferentes. Ingresá otro número.'); draft.contact_2_phone = text; return reply('awaiting_cbu', 'Ingresá el CBU de 22 dígitos de una cuenta a tu nombre.'); }
   if (state === 'awaiting_cbu') { const cbu = text.replace(/\s/g, ''); if (!isValidCbu(cbu)) return reply(state, 'El CBU no es válido. Revisá los 22 dígitos.'); draft.cbu = cbu; return reply('awaiting_holder_name', 'Escribí el nombre completo del titular de la cuenta.'); }
   if (state === 'awaiting_holder_name') { if (text.length < 3) return reply(state, 'Ingresá el nombre completo del titular.'); draft.holder_name = text; return reply('awaiting_dni_front', 'Enviá una foto clara del frente de tu DNI.'); }
   const documentSteps: Record<string, { documentType: string; next: string; prompt: string }> = {
@@ -82,9 +95,11 @@ export function conversationStep(state: string, currentDraft: Record<string, unk
     documents[target.documentType] = { media_id: mediaId, mime_type: normalizedText(input.mime_type).slice(0, 100), received_at: new Date().toISOString() }; draft.documents = documents;
     return reply(target.next, target.prompt, { type: 'download_and_store_media', document_type: target.documentType, media_id: mediaId });
   }
-  if (state === 'awaiting_amount') { const amount = Number(text.replace(/[^0-9]/g, '')); if (!Number.isFinite(amount) || amount <= 0) return reply(state, 'Ingresá un monto válido, sólo números.'); draft.requested_amount = amount; const dni = String(draft.dni ?? ''); const cbu = String(draft.cbu ?? ''); return reply('awaiting_confirmation', `Revisá: ${draft.full_name}, DNI ***${dni.slice(-3)}, CBU ***${cbu.slice(-4)}, monto $${amount.toLocaleString('es-AR')}. Respondé CONFIRMAR o ASESOR.`); }
+  if (state === 'awaiting_amount') { const amount = Number(text.replace(/[^0-9]/g, '')); if (!Number.isFinite(amount) || amount <= 0) return reply(state, 'Ingresá un monto válido, sólo números.'); draft.requested_amount = amount; const dni = String(draft.dni ?? ''); const cbu = String(draft.cbu ?? ''); const income = Number(draft.monthly_income ?? 0); return reply('awaiting_confirmation', `Revisá: ${draft.full_name}, DNI ***${dni.slice(-3)}, CBU ***${cbu.slice(-4)}, ingreso mensual $${income.toLocaleString('es-AR')} y monto solicitado $${amount.toLocaleString('es-AR')}. Respondé CONFIRMAR o ASESOR.`); }
   if (state === 'awaiting_confirmation') { if (/^(confirmar|confirmo|si|sí)$/i.test(text)) return reply('ready_for_review', 'Solicitud preliminar completa. Un analista revisará los datos y documentos antes de cualquier aprobación.', { type: 'human_review_required' }); return reply(state, 'Respondé CONFIRMAR para enviar a revisión o ASESOR si necesitás corregir información.'); }
   if (state === 'ready_for_review') return reply(state, 'Tu solicitud está esperando revisión. Te avisaremos por este chat cuando haya novedades.');
+  if (state === 'approved') return reply(state, 'Tu solicitud fue aprobada. Un asesor continuará la gestión y confirmará las condiciones antes del desembolso.');
+  if (state === 'rejected') return reply(state, 'Tu solicitud fue revisada y no fue aprobada. Si necesitás ayuda, escribí ASESOR.');
   if (state === 'human_handoff') return reply(state, 'La conversación está asignada a un asesor.');
   if (state === 'declined' && /^hola$/i.test(lower)) return reply('awaiting_channel_choice', 'Empecemos nuevamente. Respondé 1 para usar la APP o 2 para continuar por WHATSAPP.');
   return reply(state, 'No pude interpretar ese mensaje. Escribí ASESOR para recibir ayuda humana.');
@@ -152,6 +167,29 @@ if (import.meta.main) Deno.serve(async (req) => {
     if (updated.error) return complete({ error: 'conversation_update_failed' }, 500);
     if (result.action?.type === 'human_review_required' || result.action?.type === 'human_handoff') await admin.schema('private').from('audit_log').insert({ actor_kind: 'n8n', action: String(result.action.type), entity_type: 'whatsapp_conversation', entity_id: conversationData.id, request_id: idempotencyKey, after_data: { state: result.state } });
     return complete({ duplicate: false, conversation: updated.data, messages: result.messages, action: result.action ?? null }, 200);
+  }
+
+  if (req.method === 'POST' && path.length === 3 && path[0] === 'conversations' && path[1] === 'outbox' && path[2] === 'claim') {
+    const limit = Number(body.limit ?? 5);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10) return complete({ error: 'invalid_limit' }, 422);
+    const claimed = await admin.schema('private').rpc('claim_whatsapp_outbox', { p_limit: limit });
+    if (claimed.error) return complete({ error: 'outbox_unavailable' }, 500);
+    return complete({ messages: (claimed.data ?? []).map((item: Record<string, unknown>) => ({ id: item.id, payload: item.payload, attempts: item.attempts })) }, 200);
+  }
+
+  if (req.method === 'POST' && path.length === 4 && path[0] === 'conversations' && path[1] === 'outbox' && path[3] === 'complete') {
+    const outboxId = path[2];
+    const sent = body.sent === true;
+    const errorMessage = normalizedText(body.error).slice(0, 500);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(outboxId)) return complete({ error: 'invalid_outbox_id' }, 422);
+    const current = await admin.schema('private').from('whatsapp_outbox').select('id,status,attempts').eq('id', outboxId).maybeSingle();
+    if (current.error) return complete({ error: 'outbox_lookup_failed' }, 500);
+    if (!current.data) return complete({ error: 'not_found' }, 404);
+    if (current.data.status === 'sent') return complete({ message: current.data }, 200);
+    const nextStatus = sent ? 'sent' : current.data.attempts >= 5 ? 'failed' : 'pending';
+    const update = await admin.schema('private').from('whatsapp_outbox').update({ status: nextStatus, sent_at: sent ? new Date().toISOString() : null, available_at: sent ? new Date().toISOString() : new Date(Date.now() + 60_000).toISOString(), last_error: sent ? null : (errorMessage || 'custom_api_delivery_failed') }).eq('id', outboxId).eq('status', 'sending').select('id,status,attempts').maybeSingle();
+    if (update.error || !update.data) return complete({ error: 'outbox_completion_failed' }, 409);
+    return complete({ message: update.data }, 200);
   }
 
   if (req.method === 'POST' && path.length === 1 && path[0] === 'quotes') {

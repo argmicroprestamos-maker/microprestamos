@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: MicroPréstamos API
-  version: 0.4.0
+  version: 0.5.0
 servers:
   - url: https://yncfmpbapocdxcmqdeke.supabase.co/functions/v1
 paths:
@@ -22,6 +22,17 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/QuoteRequest' } } }
       responses: {'200': {description: OK}}
+  /integration-v1/conversations/outbox/claim:
+    post:
+      summary: Reclama hasta diez mensajes pendientes para su entrega por n8n
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      responses: {'200': {description: Claimed messages}, '401': {description: Invalid signature}}
+  /integration-v1/conversations/outbox/{message_id}/complete:
+    post:
+      summary: Confirma o reprograma una entrega de la bandeja de salida
+      security: [{ IntegrationSecret: [], IntegrationTimestamp: [], IntegrationNonce: [], IntegrationSignature: [], IdempotencyKey: [] }]
+      parameters: [{name: message_id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'200': {description: Delivery recorded}, '409': {description: Invalid delivery state}}
   /integration-v1/applications:
     post:
       summary: Crea una solicitud idempotente
@@ -82,6 +93,17 @@ paths:
       security: [{ ClientBearer: [] }]
       parameters: [{name: application_id, in: path, required: true, schema: {type: string, format: uuid}}]
       responses: {'201': {description: Decision recorded}, '403': {description: Insufficient role}, '409': {description: Invalid state}}
+  /admin-api/whatsapp-applications:
+    get:
+      summary: Lista solicitudes asistidas por WhatsApp para revisión humana
+      security: [{ ClientBearer: [] }]
+      responses: {'200': {description: OK}, '403': {description: Insufficient role}}
+  /admin-api/whatsapp-applications/{conversation_id}/decision:
+    post:
+      summary: Aprueba o rechaza manualmente una solicitud de WhatsApp
+      security: [{ ClientBearer: [] }]
+      parameters: [{name: conversation_id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'201': {description: Decision recorded}, '403': {description: Insufficient role}, '409': {description: Active loan or invalid state}}
   /admin-api/loans/{loan_id}/disburse:
     post:
       summary: Registra una transferencia ya realizada; no inicia transferencias bancarias
@@ -110,6 +132,7 @@ components:
         wa_id: {type: string, pattern: '^\\+?[1-9][0-9]{7,14}$'}
         message_id: {type: string, minLength: 1, maxLength: 200}
         message_type: {type: string, enum: [text, image, document, interactive, unknown]}
+        provider_message_type: {type: string, maxLength: 40}
         text: {type: string, maxLength: 2000}
         media_id: {type: string, maxLength: 500}
         mime_type: {type: string, maxLength: 100}

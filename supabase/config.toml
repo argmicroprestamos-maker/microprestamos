@@ -1,5 +1,25 @@
 project_id = "yncfmpbapocdxcmqdeke"
 
+# Puertos locales fuera del rango reservado por Windows en este equipo.
+[api]
+port = 55321
+
+[db]
+port = 55322
+shadow_port = 55320
+
+[db.pooler]
+port = 55329
+
+[studio]
+port = 55323
+
+[inbucket]
+port = 55324
+
+[analytics]
+port = 55327
+
 [functions.health]
 verify_jwt = false
 

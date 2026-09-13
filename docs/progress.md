@@ -46,6 +46,9 @@
 - Supabase conserva sesiones conversacionales privadas e idempotentes y guía el alta asistida: elección app/WhatsApp, consentimiento, datos personales, dos contactos, CBU, documentos, monto, confirmación y derivación humana.
 - `integration-v1` v6 desplegada; el nuevo endpoint `/conversations/inbound` rechaza tráfico sin firma y la máquina de conversación tiene pruebas Deno.
 - Workflow de producción preparado como adaptador HTTP para la API casera de WhatsApp; no depende de Meta ni de los nodos oficiales.
+- La conversación asistida recopila situación laboral, empleador/actividad e ingreso mensual antes de pasar a revisión humana.
+- Panel administrativo preparado para listar, aprobar o rechazar casos de WhatsApp; las decisiones generan una bandeja de salida para n8n.
+- Regla preparada para impedir más de un préstamo abierto por cliente.
 
 ## Bloqueos antes de producción
 

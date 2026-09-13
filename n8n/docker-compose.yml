@@ -15,6 +15,7 @@ services:
       N8N_SECURE_COOKIE: "false"
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
       N8N_SHARED_SECRET: ${N8N_SHARED_SECRET}
+      SUPABASE_INTEGRATION_BASE_URL: ${SUPABASE_INTEGRATION_BASE_URL:-https://yncfmpbapocdxcmqdeke.supabase.co/functions/v1/integration-v1}
       SUPABASE_INTEGRATION_URL: ${SUPABASE_INTEGRATION_URL}
       CUSTOM_WA_API_BASE_URL: ${CUSTOM_WA_API_BASE_URL:-http://host.docker.internal:3001}
       CUSTOM_WA_API_SEND_PATH: ${CUSTOM_WA_API_SEND_PATH:-/messages/send}
