@@ -1,6 +1,6 @@
 # n8n + WhatsApp
 
-Este módulo inicia el canal asistido de MicroPréstamos. El workflow recibe un evento normalizado o un webhook de Meta, firma la petición con HMAC y usa exclusivamente `integration-v1`; n8n no accede a tablas ni recibe la service role de Supabase.
+Este módulo inicia el canal asistido de MicroPréstamos. El workflow recibe un evento normalizado desde la API casera, firma la petición con HMAC y usa exclusivamente `integration-v1`; n8n no accede a tablas ni recibe la service role de Supabase.
 
 ## Flujo inicial
 
@@ -18,18 +18,28 @@ En cualquier momento, `ASESOR`, `HUMANO`, `OPERADOR` o `AYUDA` deriva la convers
 
 1. Copiar `.env.example` como `.env` y generar secretos largos distintos.
 2. Ejecutar `docker compose up -d` dentro de `n8n/`.
-3. Abrir `http://localhost:5678`, crear el propietario local e importar `workflows/whatsapp-intake-core.json`.
+3. Abrir `http://localhost:5678`, crear el propietario local e importar los workflows de `workflows/`.
 4. Activar el workflow y enviar `fixtures/inbound-text.json` al webhook de prueba.
 
-El workflow comienza con un Webhook genérico para poder probarlo sin Meta. Al conectar producción se sustituye ese disparador por **WhatsApp Trigger / Messages** y se agrega **WhatsApp Business Cloud / Message Send** para cada elemento de `messages` devuelto por Supabase.
+Hay dos workflows separados:
 
-## Credenciales pendientes para WhatsApp real
+- `whatsapp-intake-core.json` usa un Webhook genérico para probar el diálogo sin Meta.
+- `whatsapp-intake-production.json` usa un webhook y peticiones HTTP para adaptarse a la API casera de WhatsApp.
+
+El workflow de producción se importa inactivo y debe permanecer así hasta cargar las credenciales y la URL pública.
+
+## Configuración pendiente de la API casera
 
 - Instancia n8n pública con HTTPS.
-- Meta Developer App en modo Live y Business Portfolio.
-- WhatsApp Business Account ID, Phone Number ID y Access Token.
-- OAuth2 Client ID/Secret para WhatsApp Trigger.
+- URL base y ruta para enviar mensajes (`CUSTOM_WA_API_BASE_URL` y `CUSTOM_WA_API_SEND_PATH`).
+- Encabezado y valor de autenticación para las llamadas salientes.
+- Secreto del webhook entrante en `x-webhook-secret`, `x-api-key` o `Authorization: Bearer`.
 - El mismo `N8N_SHARED_SECRET` configurado como secreto de la Edge Function.
 
-No registrar cuerpos completos, documentos, DNI o CBU en el historial de ejecuciones de producción. Configurar poda de ejecuciones y retención antes de usar datos reales.
+### Contrato provisional
 
+El webhook acepta un objeto directo, dentro de `body`, `message` o `data`. Necesita remitente (`from`, `sender` o `phone`), identificador único (`id`, `message_id` o `event_id`) y `type`. Para archivos o audios puede recibir `media`, `file`, `audio`, `image` o `document`, con `id`/`file_id`/`url`, tipo MIME y nombre.
+
+La salida provisional hace `POST` a la ruta configurada con `{ "to", "type", "text" }`; ya deja reservados `file` y `audio`. Ajustaremos este adaptador a los nombres exactos de la API sin cambiar el resto del sistema.
+
+No registrar cuerpos completos, documentos, DNI o CBU en el historial de ejecuciones de producción. Configurar poda de ejecuciones y retención antes de usar datos reales.

@@ -1,0 +1,9 @@
+{
+  "event_id": "wa-custom-demo-001",
+  "message": {
+    "id": "wa-custom-demo-001",
+    "from": "5491100000000",
+    "type": "text",
+    "text": "hola"
+  }
+}

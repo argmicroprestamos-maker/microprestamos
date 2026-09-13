@@ -44,15 +44,16 @@
 - Se creó `arg.microprestamos@gmail.com` como `superadmin` activo en Supabase Auth; requiere confirmar el correo antes del primer acceso.
 - Inicio de n8n/WhatsApp implementado: workflow importable, entorno Docker local y normalización/firma HMAC de eventos.
 - Supabase conserva sesiones conversacionales privadas e idempotentes y guía el alta asistida: elección app/WhatsApp, consentimiento, datos personales, dos contactos, CBU, documentos, monto, confirmación y derivación humana.
-- `integration-v1` v5 desplegada; el nuevo endpoint `/conversations/inbound` rechaza tráfico sin firma y la máquina de conversación tiene pruebas Deno.
+- `integration-v1` v6 desplegada; el nuevo endpoint `/conversations/inbound` rechaza tráfico sin firma y la máquina de conversación tiene pruebas Deno.
+- Workflow de producción preparado como adaptador HTTP para la API casera de WhatsApp; no depende de Meta ni de los nodos oficiales.
 
 ## Bloqueos antes de producción
 
 - Respaldar keystore de release ubicado fuera del repo en `C:\Users\danif\MicroPrestamos-secrets\microprestamos-release.jks`.
 - Confirmar el correo del superadmin y completar MFA después del primer acceso.
 - Configurar la URL y el secreto del webhook n8n que enviará los SMS OTP.
-- Conectar una instancia n8n pública HTTPS y credenciales reales de Meta/WhatsApp Business Cloud; el workflow actual usa un webhook de desarrollo y no envía mensajes reales.
-- Implementar descarga de medios de Meta hacia Storage y conversión del borrador confirmado en expediente antes de hacer un E2E con documentos reales.
+- Conectar una instancia n8n pública HTTPS y definir URL, autenticación y contrato definitivo de la API casera de WhatsApp.
+- Implementar descarga de archivos y audios desde la API casera hacia Storage y conversión del borrador confirmado en expediente antes de hacer un E2E con documentos reales.
 - Instalación en dispositivo Android bloqueada por `INSTALL_FAILED_USER_RESTRICTED`; requiere habilitar instalación USB en el dispositivo.
 - Configurar un entorno Vercel comercial antes de recibir clientes reales.
 - Mostrar comprobantes de préstamos activos en Android una vez exista un préstamo desembolsado de prueba.

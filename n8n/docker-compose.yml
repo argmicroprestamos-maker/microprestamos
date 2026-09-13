@@ -16,6 +16,11 @@ services:
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
       N8N_SHARED_SECRET: ${N8N_SHARED_SECRET}
       SUPABASE_INTEGRATION_URL: ${SUPABASE_INTEGRATION_URL}
+      CUSTOM_WA_API_BASE_URL: ${CUSTOM_WA_API_BASE_URL:-http://host.docker.internal:3001}
+      CUSTOM_WA_API_SEND_PATH: ${CUSTOM_WA_API_SEND_PATH:-/messages/send}
+      CUSTOM_WA_API_AUTH_HEADER: ${CUSTOM_WA_API_AUTH_HEADER:-authorization}
+      CUSTOM_WA_API_AUTH_VALUE: ${CUSTOM_WA_API_AUTH_VALUE:-}
+      CUSTOM_WA_WEBHOOK_SECRET: ${CUSTOM_WA_WEBHOOK_SECRET:-}
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-America/Argentina/Buenos_Aires}
       TZ: ${GENERIC_TIMEZONE:-America/Argentina/Buenos_Aires}
     volumes:
@@ -24,4 +29,3 @@ services:
 
 volumes:
   n8n_data:
-
