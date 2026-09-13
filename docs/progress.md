@@ -17,10 +17,8 @@
 - Supabase verificado: 5 Edge Functions ACTIVE y 11 migraciones registradas en el proyecto.
 - Build Next.js verificado.
 - Build Android debug y release unsigned verificados con Gradle 8.10.2/JDK 17.
-- APK release `0.1.1` firmado y verificado; publicado localmente en `apps/web/public/downloads/microprestamos.apk` con SHA-256 `006E362FAC3E786B61F4298464F5DD7D5CC7F3872539E51AF47EC48D1AAEE80A`.
-- Preview Vercel creado: `https://microprestamos-q93vuueqy-microp.vercel.app`.
-- Se inició reautenticación del CLI Vercel; el dispositivo quedó pendiente porque el botón de autorización no se habilitó en Edge.
-- Verificación oficial de disponibilidad: `microprestamos.vercel.app` está ocupada/no disponible; el alias alternativo actual es `microprestamos-microp.vercel.app`.
+- APK release `0.1.1` firmado y verificado; publicado en `https://github.com/argmicroprestamos-maker/microprestamos/releases/tag/v0.1.1` con SHA-256 `006E362FAC3E786B61F4298464F5DD7D5CC7F3872539E51AF47EC48D1AAEE80A`.
+- Producción Vercel verificada en `https://microprestamos.vercel.app`; la landing y `/descargar` enlazan al release de GitHub.
 - Panel `/admin` conectado a Supabase Auth y `admin-api`, con bloqueo por rol.
 - Panel `/admin` ahora carga y lista solicitudes recientes reales desde `admin-api`, además del resumen por estado.
 - Landing pública incorpora simulador interactivo de monto, porcentaje y cuotas con total e importe de cuota.
@@ -42,14 +40,14 @@
 - Bucket de documentos restringido a 10 MB/JPEG/PNG/PDF; la API descarga cada archivo, comprueba firma MIME, tamaño y SHA-256 antes de registrarlo en el expediente.
 - Android valida localmente teléfono E.164, fecha real, CBU con checksum y contactos antes de enviar; cinco pruebas unitarias pasan.
 - La frontera n8n exige secreto, HMAC-SHA-256, timestamp de cinco minutos, nonce/idempotency key y límite de 30 solicitudes por minuto; el otorgamiento automatizado sigue deshabilitado.
+- La simulación Android invalida la cotización al editar el monto y exige recalcularla antes de enviar la solicitud.
 
 ## Bloqueos antes de producción
 
-- Respaldar keystore de release ubicado fuera del repo en `C:\Users\danif\MicroPrestamos-secrets\microprestamos-release.jks`; publicar el APK `0.1.1` en Vercel/GitHub Release.
+- Respaldar keystore de release ubicado fuera del repo en `C:\Users\danif\MicroPrestamos-secrets\microprestamos-release.jks`.
 - Configurar Auth/MFA, usuario admin y secretos (`N8N_SHARED_SECRET`, variables Vercel).
 - Instalación en dispositivo Android bloqueada por `INSTALL_FAILED_USER_RESTRICTED`; requiere habilitar instalación USB en el dispositivo.
-- Resolver autorización del scope Vercel `microp` para validar/aliasear el deployment.
-- Token GitHub actual no tiene permiso `repo` para crear/pushar repositorio; el código sigue local.
+- Configurar un entorno Vercel comercial antes de recibir clientes reales.
 - Mostrar comprobantes de préstamos activos en Android una vez exista un préstamo desembolsado de prueba.
 - Crear usuarios/roles de prueba y configurar secretos (`ALLOWED_ORIGIN`, `N8N_SHARED_SECRET`) por entorno.
 - Ejecutar pruebas pgTAP/RLS y E2E contra Supabase local: Docker Desktop no está iniciado en este equipo; CI ya las configura en GitHub Actions.

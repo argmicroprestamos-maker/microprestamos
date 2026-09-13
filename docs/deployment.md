@@ -7,7 +7,7 @@ El proyecto está configurado para Next.js en Vercel con `vercel.json`. Variable
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-La publicación debe incluir `apps/web/public/downloads/microprestamos.apk` y su JSON de metadatos. Antes de asociar un dominio, verificar que el proyecto esté bajo la cuenta correcta y que el plan permita el uso comercial.
+La web no incluye binarios. El APK firmado se publica como GitHub Release y `/descargar` enlaza al activo de la versión estable. La versión `0.1.1` está publicada en `https://github.com/argmicroprestamos-maker/microprestamos/releases/tag/v0.1.1`. Antes de asociar un dominio, verificar que el proyecto esté bajo la cuenta correcta y que el plan permita el uso comercial.
 
 ## Android
 
