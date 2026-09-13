@@ -12,8 +12,8 @@ select ok(private.is_valid_cbu('1111111911111111111117'), 'accepts a CBU with va
 select ok(not private.is_valid_cbu('1111111911111111111118'), 'rejects invalid CBU checksum');
 select ok(not private.is_valid_cbu('0000000000000000000000'), 'rejects all-zero CBU');
 
-select has_index('private', 'emergency_contacts_client_position_uidx', 'contact position is unique');
-select has_index('private', 'client_documents_required_type_once', 'mandatory document types cannot be duplicated');
+select has_index('private', 'emergency_contacts', 'emergency_contacts_client_id_position_key', 'contact position is unique');
+select has_index('private', 'client_documents', 'client_documents_required_type_once', 'mandatory document types cannot be duplicated');
 select has_trigger('private', 'loan_applications', 'loan_applications_submission_guard', 'submission requirements are database-enforced');
 select has_trigger('private', 'loans', 'loans_status_guard', 'loan status transitions are database-enforced');
 
