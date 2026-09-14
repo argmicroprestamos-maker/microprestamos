@@ -9,10 +9,12 @@ Este módulo inicia el canal asistido de MicroPréstamos. El workflow recibe un 
 3. Si elige WhatsApp, pide consentimiento explícito.
 4. Recopila datos personales, situación laboral, detalle de empleo o actividad e ingreso mensual.
 5. Recopila exactamente dos contactos, CBU y titular.
-6. Solicita DNI frente, DNI dorso y constancia de CBU.
-7. Pide el monto y muestra un resumen enmascarado.
-8. La confirmación deja la solicitud pendiente de aprobación humana.
-9. La decisión humana se guarda en una bandeja de salida y n8n la comunica por la API casera.
+6. Solicita DNI frente, DNI dorso y constancia de CBU como imágenes.
+7. DeepSeek valida que cada imagen sea legible y del tipo/lado esperado, y extrae sus datos.
+8. Repite al cliente los datos extraídos; SÍ continúa y NO deriva a revisión humana.
+9. Pide el monto y muestra un resumen enmascarado.
+10. La confirmación deja la solicitud pendiente de aprobación humana.
+11. La decisión humana se guarda en una bandeja de salida y n8n la comunica por la API casera.
 
 En cualquier momento, `ASESOR`, `HUMANO`, `OPERADOR` o `AYUDA` deriva la conversación.
 
@@ -37,10 +39,11 @@ Los workflows de producción se importan inactivos y deben permanecer así hasta
 - WSP Engine recibe llamadas salientes con `Authorization: Bearer <WSP_API_TOKEN>`.
 - WSP Engine reenvía mensajes entrantes a `http://127.0.0.1:5678/webhook/microprestamos/whatsapp/custom/inbound` usando `x-webhook-secret`.
 - El mismo `N8N_SHARED_SECRET` configurado como secreto de la Edge Function.
+- `DEEPSEEK_API_KEY` se configura sólo como secreto de Supabase; nunca se envía a n8n, la web o la app.
 
 ### Contrato integrado
 
-El webhook acepta el objeto emitido por WSP Engine con remitente, identificador único y tipo. Las imágenes y PDF de la solicitud incluyen base64, tipo MIME y nombre; la Edge Function los guarda en el bucket privado `client-documents`. El límite por adjunto es 6 MiB.
+El webhook acepta el objeto emitido por WSP Engine con remitente, identificador único y tipo. Las imágenes incluyen base64, tipo MIME y nombre; la Edge Function las valida con `deepseek-flash` antes de guardarlas en el bucket privado `client-documents`. El límite por adjunto es 6 MiB.
 
 La salida hace `POST /v1/messages/send` con `{ "to", "type", "text" }` y admite además `file` o `audio`.
 
