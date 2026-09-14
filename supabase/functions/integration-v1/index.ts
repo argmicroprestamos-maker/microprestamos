@@ -166,15 +166,16 @@ if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === 'POST' && path.length === 2 && path[0] === 'conversations' && path[1] === 'inbound') {
     const originalWaId = normalizedText(body.wa_id);
     const waId = originalWaId.replace(/^\+/, '');
+    const replyTo = normalizedText(body.reply_to).toLowerCase();
     const messageId = normalizedText(body.message_id);
     const messageType = normalizedText(body.message_type) || 'unknown';
     const mediaBase64 = typeof body.media_base64 === 'string' ? body.media_base64 : '';
-    if (!/^\+?[1-9][0-9]{7,14}$/.test(originalWaId) || messageId.length < 1 || messageId.length > 200 || !['text', 'image', 'document', 'interactive', 'unknown'].includes(messageType) || normalizedText(body.text).length > 2_000 || normalizedText(body.media_id).length > 500 || normalizedText(body.mime_type).length > 100 || normalizedText(body.file_name).length > 255 || mediaBase64.length > 8_500_000) return complete({ error: 'invalid_conversation_event' }, 422);
-    const conversation = await admin.schema('private').from('whatsapp_conversations').select('id,mode,state,draft').eq('wa_id', waId).maybeSingle();
+    if (!/^\+?[1-9][0-9]{7,14}$/.test(originalWaId) || (replyTo && !/^[1-9][0-9]{7,20}@(c\.us|lid)$/.test(replyTo)) || messageId.length < 1 || messageId.length > 200 || !['text', 'image', 'document', 'interactive', 'unknown'].includes(messageType) || normalizedText(body.text).length > 2_000 || normalizedText(body.media_id).length > 500 || normalizedText(body.mime_type).length > 100 || normalizedText(body.file_name).length > 255 || mediaBase64.length > 8_500_000) return complete({ error: 'invalid_conversation_event' }, 422);
+    const conversation = await admin.schema('private').from('whatsapp_conversations').select('id,mode,state,draft,reply_route').eq('wa_id', waId).maybeSingle();
     if (conversation.error) return complete({ error: 'conversation_lookup_failed' }, 500);
     let conversationData = conversation.data;
     if (!conversationData) {
-      const created = await admin.schema('private').from('whatsapp_conversations').insert({ wa_id: waId }).select('id,mode,state,draft').single();
+      const created = await admin.schema('private').from('whatsapp_conversations').insert({ wa_id: waId, reply_route: replyTo || null }).select('id,mode,state,draft,reply_route').single();
       if (created.error || !created.data) return complete({ error: 'conversation_create_failed' }, 500);
       conversationData = created.data;
     }
@@ -202,7 +203,7 @@ if (import.meta.main) Deno.serve(async (req) => {
     if (receipt.error?.code === '23505') return complete({ duplicate: true, conversation: { id: conversationData.id, state: conversationData.state, mode: conversationData.mode }, messages: [] }, 200);
     if (receipt.error) return complete({ error: 'message_receipt_failed' }, 500);
     const result = conversationStep(conversationData.state, (conversationData.draft ?? {}) as Record<string, unknown>, processedBody);
-    const updated = await admin.schema('private').from('whatsapp_conversations').update({ state: result.state, mode: result.mode ?? conversationData.mode, draft: result.draft, last_inbound_at: new Date().toISOString(), last_outbound_at: new Date().toISOString() }).eq('id', conversationData.id).select('id,mode,state').single();
+    const updated = await admin.schema('private').from('whatsapp_conversations').update({ state: result.state, mode: result.mode ?? conversationData.mode, draft: result.draft, reply_route: replyTo || conversationData.reply_route || null, last_inbound_at: new Date().toISOString(), last_outbound_at: new Date().toISOString() }).eq('id', conversationData.id).select('id,mode,state').single();
     if (updated.error) return complete({ error: 'conversation_update_failed' }, 500);
     if (result.action?.type === 'human_review_required' || result.action?.type === 'human_handoff') await admin.schema('private').from('audit_log').insert({ actor_kind: 'n8n', action: String(result.action.type), entity_type: 'whatsapp_conversation', entity_id: conversationData.id, request_id: idempotencyKey, after_data: { state: result.state } });
     return complete({ duplicate: false, conversation: updated.data, messages: result.messages, action: result.action ?? null }, 200);
