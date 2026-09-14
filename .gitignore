@@ -11,6 +11,7 @@ supabase/.temp/
 .env
 .env.*
 !.env.example
+WSP-Engine-Environment-Backup-*/
 *.jks
 *.keystore
 *.p12
