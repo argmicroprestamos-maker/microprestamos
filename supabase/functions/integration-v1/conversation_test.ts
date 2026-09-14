@@ -31,6 +31,13 @@ Deno.test('records media metadata and requests secure download', () => {
   assert(result.action?.document_type === 'dni_front', 'should classify the document');
 });
 
+Deno.test('records a document already persisted by the integration endpoint', () => {
+  const result = conversationStep('awaiting_dni_front', {}, { message_type: 'image', media_id: 'whatsapp/case/dni.jpg', storage_path: 'whatsapp/case/dni.jpg', mime_type: 'image/jpeg', file_name: 'dni.jpg' });
+  assert(result.action?.type === 'media_stored', 'should not request another download');
+  const stored = (result.draft.documents as Record<string, { storage_path: string }>).dni_front;
+  assert(stored.storage_path === 'whatsapp/case/dni.jpg', 'should retain the private storage path');
+});
+
 Deno.test('allows human handoff at any point', () => {
   const result = conversationStep('awaiting_cbu', {}, { message_type: 'text', text: 'quiero un asesor' });
   assert(result.state === 'human_handoff', 'should hand off to a human');

@@ -6,6 +6,8 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const encoder = new TextEncoder();
 const MAX_AGE_MS = 5 * 60 * 1000;
 const MAX_REQUESTS_PER_MINUTE = 30;
+const MAX_REQUEST_BYTES = 9 * 1024 * 1024;
+const MAX_MEDIA_BYTES = 6 * 1024 * 1024;
 
 const hex = (bytes: Uint8Array) => Array.from(bytes).map((x) => x.toString(16).padStart(2, '0')).join('');
 async function sha256(value: string) { return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)))); }
@@ -35,6 +37,21 @@ function isValidCbu(value: string) {
   if (!/^\d{22}$/.test(value) || /^0+$/.test(value)) return false;
   const check = (digits: string, weights: number[], expected: string) => (10 - digits.split('').reduce((sum, digit, index) => sum + Number(digit) * weights[index], 0) % 10) % 10 === Number(expected);
   return check(value.slice(0, 7), [7, 1, 3, 9, 7, 1, 3], value[7]) && check(value.slice(8, 21), [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3], value[21]);
+}
+const documentTypeForState = (state: string) => ({
+  awaiting_dni_front: 'dni_front',
+  awaiting_dni_back: 'dni_back',
+  awaiting_cbu_certificate: 'cbu_certificate',
+} as Record<string, string>)[state] ?? null;
+function decodeMedia(value: string) {
+  const base64 = value.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '');
+  if (!base64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw new Error('invalid_media_base64');
+  const binary = atob(base64);
+  if (binary.length < 1 || binary.length > MAX_MEDIA_BYTES) throw new Error('invalid_media_size');
+  return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
+function mediaExtension(mimeType: string) {
+  return ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'application/pdf': 'pdf' } as Record<string, string>)[mimeType] ?? null;
 }
 export function conversationStep(state: string, currentDraft: Record<string, unknown>, input: Record<string, unknown>): ConversationResult {
   const draft = structuredClone(currentDraft);
@@ -92,8 +109,9 @@ export function conversationStep(state: string, currentDraft: Record<string, unk
   if (documentSteps[state]) {
     if (!['image', 'document'].includes(kind) || !mediaId) return reply(state, 'Necesito que adjuntes una imagen o un documento válido.');
     const target = documentSteps[state]; const documents = (draft.documents as Record<string, unknown> | undefined) ?? {};
-    documents[target.documentType] = { media_id: mediaId, mime_type: normalizedText(input.mime_type).slice(0, 100), received_at: new Date().toISOString() }; draft.documents = documents;
-    return reply(target.next, target.prompt, { type: 'download_and_store_media', document_type: target.documentType, media_id: mediaId });
+    const storagePath = normalizedText(input.storage_path);
+    documents[target.documentType] = { media_id: mediaId, storage_path: storagePath || null, mime_type: normalizedText(input.mime_type).slice(0, 100), file_name: normalizedText(input.file_name).slice(0, 255), received_at: new Date().toISOString() }; draft.documents = documents;
+    return reply(target.next, target.prompt, { type: storagePath ? 'media_stored' : 'download_and_store_media', document_type: target.documentType, media_id: mediaId });
   }
   if (state === 'awaiting_amount') { const amount = Number(text.replace(/[^0-9]/g, '')); if (!Number.isFinite(amount) || amount <= 0) return reply(state, 'Ingresá un monto válido, sólo números.'); draft.requested_amount = amount; const dni = String(draft.dni ?? ''); const cbu = String(draft.cbu ?? ''); const income = Number(draft.monthly_income ?? 0); return reply('awaiting_confirmation', `Revisá: ${draft.full_name}, DNI ***${dni.slice(-3)}, CBU ***${cbu.slice(-4)}, ingreso mensual $${income.toLocaleString('es-AR')} y monto solicitado $${amount.toLocaleString('es-AR')}. Respondé CONFIRMAR o ASESOR.`); }
   if (state === 'awaiting_confirmation') { if (/^(confirmar|confirmo|si|sí)$/i.test(text)) return reply('ready_for_review', 'Solicitud preliminar completa. Un analista revisará los datos y documentos antes de cualquier aprobación.', { type: 'human_review_required' }); return reply(state, 'Respondé CONFIRMAR para enviar a revisión o ASESOR si necesitás corregir información.'); }
@@ -117,7 +135,7 @@ if (import.meta.main) Deno.serve(async (req) => {
   if (!sharedSecret || req.headers.get('x-integration-secret') !== sharedSecret) return json({ error: 'unauthorized' }, 401);
   if (!/^\d{10}$/.test(timestamp) || Math.abs(Date.now() - requestTime) > MAX_AGE_MS || !/^[A-Za-z0-9_-]{16,128}$/.test(nonce) || nonce !== idempotencyKey || !/^[a-f0-9]{64}$/.test(signature)) return json({ error: 'invalid_request_signature' }, 401);
   if (!equal(signature, await hmac(sharedSecret, `${timestamp}.${nonce}.${rawBody}`))) return json({ error: 'invalid_request_signature' }, 401);
-  if (encoder.encode(rawBody).byteLength > 65_536) return json({ error: 'payload_too_large' }, 413);
+  if (encoder.encode(rawBody).byteLength > MAX_REQUEST_BYTES) return json({ error: 'payload_too_large' }, 413);
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const integration = await admin.schema('private').from('integration_clients').select('id').eq('name', 'n8n').eq('active', true).maybeSingle();
@@ -150,7 +168,8 @@ if (import.meta.main) Deno.serve(async (req) => {
     const waId = originalWaId.replace(/^\+/, '');
     const messageId = normalizedText(body.message_id);
     const messageType = normalizedText(body.message_type) || 'unknown';
-    if (!/^\+?[1-9][0-9]{7,14}$/.test(originalWaId) || messageId.length < 1 || messageId.length > 200 || !['text', 'image', 'document', 'interactive', 'unknown'].includes(messageType) || normalizedText(body.text).length > 2_000 || normalizedText(body.media_id).length > 500 || normalizedText(body.mime_type).length > 100 || normalizedText(body.file_name).length > 255) return complete({ error: 'invalid_conversation_event' }, 422);
+    const mediaBase64 = typeof body.media_base64 === 'string' ? body.media_base64 : '';
+    if (!/^\+?[1-9][0-9]{7,14}$/.test(originalWaId) || messageId.length < 1 || messageId.length > 200 || !['text', 'image', 'document', 'interactive', 'unknown'].includes(messageType) || normalizedText(body.text).length > 2_000 || normalizedText(body.media_id).length > 500 || normalizedText(body.mime_type).length > 100 || normalizedText(body.file_name).length > 255 || mediaBase64.length > 8_500_000) return complete({ error: 'invalid_conversation_event' }, 422);
     const conversation = await admin.schema('private').from('whatsapp_conversations').select('id,mode,state,draft').eq('wa_id', waId).maybeSingle();
     if (conversation.error) return complete({ error: 'conversation_lookup_failed' }, 500);
     let conversationData = conversation.data;
@@ -159,10 +178,30 @@ if (import.meta.main) Deno.serve(async (req) => {
       if (created.error || !created.data) return complete({ error: 'conversation_create_failed' }, 500);
       conversationData = created.data;
     }
+    const processedBody: Record<string, unknown> = { ...body };
+    if (mediaBase64) {
+      const documentType = documentTypeForState(conversationData.state);
+      const mimeType = normalizedText(body.mime_type).toLowerCase();
+      const extension = mediaExtension(mimeType);
+      if (!documentType || !['image', 'document'].includes(messageType) || !extension) return complete({ error: 'unsupported_document' }, 422);
+      let mediaBytes: Uint8Array;
+      try { mediaBytes = decodeMedia(mediaBase64); } catch (error) { return complete({ error: error instanceof Error ? error.message : 'invalid_media' }, 422); }
+      const messageHash = (await sha256(messageId)).slice(0, 24);
+      const storagePath = `whatsapp/${conversationData.id}/${documentType}-${messageHash}.${extension}`;
+      const upload = await admin.storage.from('client-documents').upload(storagePath, mediaBytes, { contentType: mimeType, upsert: false });
+      if (upload.error) {
+        const uploadError = upload.error as unknown as { message?: string; statusCode?: string | number; error?: string };
+        const duplicate = String(uploadError.statusCode ?? '') === '409' || /duplicate|already exists/i.test(`${uploadError.error ?? ''} ${uploadError.message ?? ''}`);
+        if (!duplicate) return complete({ error: 'document_upload_failed' }, 500);
+      }
+      processedBody.media_id = storagePath;
+      processedBody.storage_path = storagePath;
+      delete processedBody.media_base64;
+    }
     const receipt = await admin.schema('private').from('whatsapp_message_receipts').insert({ external_message_id: messageId, conversation_id: conversationData.id, message_type: messageType });
     if (receipt.error?.code === '23505') return complete({ duplicate: true, conversation: { id: conversationData.id, state: conversationData.state, mode: conversationData.mode }, messages: [] }, 200);
     if (receipt.error) return complete({ error: 'message_receipt_failed' }, 500);
-    const result = conversationStep(conversationData.state, (conversationData.draft ?? {}) as Record<string, unknown>, body);
+    const result = conversationStep(conversationData.state, (conversationData.draft ?? {}) as Record<string, unknown>, processedBody);
     const updated = await admin.schema('private').from('whatsapp_conversations').update({ state: result.state, mode: result.mode ?? conversationData.mode, draft: result.draft, last_inbound_at: new Date().toISOString(), last_outbound_at: new Date().toISOString() }).eq('id', conversationData.id).select('id,mode,state').single();
     if (updated.error) return complete({ error: 'conversation_update_failed' }, 500);
     if (result.action?.type === 'human_review_required' || result.action?.type === 'human_handoff') await admin.schema('private').from('audit_log').insert({ actor_kind: 'n8n', action: String(result.action.type), entity_type: 'whatsapp_conversation', entity_id: conversationData.id, request_id: idempotencyKey, after_data: { state: result.state } });

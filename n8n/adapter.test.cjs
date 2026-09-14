@@ -25,10 +25,11 @@ async function runAdapter(body, suppliedSecret = 'webhook-secret') {
   assert.equal(textResult[0].json.requestBody.text, 'hola');
   assert.match(textResult[0].json.headers.signature, /^[a-f0-9]{64}$/);
 
-  const fileResult = await runAdapter({ data: { message_id: 'm-2', sender: '5491100000000', type: 'file', file: { file_id: 'file-7', mimetype: 'application/pdf', filename: 'cbu.pdf' } } });
+  const fileResult = await runAdapter({ data: { message_id: 'm-2', sender: '5491100000000', type: 'file', file: { file_id: 'file-7', base64: 'cGRm', mimetype: 'application/pdf', filename: 'cbu.pdf' } } });
   assert.equal(fileResult[0].json.requestBody.message_type, 'document');
   assert.equal(fileResult[0].json.requestBody.media_id, 'file-7');
   assert.equal(fileResult[0].json.requestBody.file_name, 'cbu.pdf');
+  assert.equal(fileResult[0].json.requestBody.media_base64, 'cGRm');
 
   const audioResult = await runAdapter({ id: 'm-3', phone: '5491100000000', type: 'audio', audio: 'http://api.local/media/m-3' });
   assert.equal(audioResult[0].json.requestBody.message_type, 'unknown');

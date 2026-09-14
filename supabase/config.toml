@@ -3,6 +3,8 @@ project_id = "yncfmpbapocdxcmqdeke"
 # Puertos locales fuera del rango reservado por Windows en este equipo.
 [api]
 port = 55321
+schemas = ["public", "graphql_public", "private"]
+extra_search_path = ["public", "extensions", "private"]
 
 [db]
 port = 55322

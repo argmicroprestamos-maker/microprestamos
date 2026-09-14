@@ -31,18 +31,17 @@ Hay tres workflows separados:
 
 Los workflows de producción se importan inactivos y deben permanecer así hasta cargar la autenticación, la URL de la API y el mismo secreto HMAC en Supabase.
 
-## Configuración pendiente de la API casera
+## Configuración de WSP Engine
 
-- Instancia n8n pública con HTTPS.
-- URL base y ruta para enviar mensajes (`CUSTOM_WA_API_BASE_URL` y `CUSTOM_WA_API_SEND_PATH`).
-- Encabezado y valor de autenticación para las llamadas salientes.
-- Secreto del webhook entrante en `x-webhook-secret`, `x-api-key` o `Authorization: Bearer`.
+- En Docker, `CUSTOM_WA_API_BASE_URL=http://host.docker.internal:3001` y `CUSTOM_WA_API_SEND_PATH=/v1/messages/send`.
+- WSP Engine recibe llamadas salientes con `Authorization: Bearer <WSP_API_TOKEN>`.
+- WSP Engine reenvía mensajes entrantes a `http://127.0.0.1:5678/webhook/microprestamos/whatsapp/custom/inbound` usando `x-webhook-secret`.
 - El mismo `N8N_SHARED_SECRET` configurado como secreto de la Edge Function.
 
-### Contrato provisional
+### Contrato integrado
 
-El webhook acepta un objeto directo, dentro de `body`, `message` o `data`. Necesita remitente (`from`, `sender` o `phone`), identificador único (`id`, `message_id` o `event_id`) y `type`. Para archivos o audios puede recibir `media`, `file`, `audio`, `image` o `document`, con `id`/`file_id`/`url`, tipo MIME y nombre.
+El webhook acepta el objeto emitido por WSP Engine con remitente, identificador único y tipo. Las imágenes y PDF de la solicitud incluyen base64, tipo MIME y nombre; la Edge Function los guarda en el bucket privado `client-documents`. El límite por adjunto es 6 MiB.
 
-La salida provisional hace `POST` a la ruta configurada con `{ "to", "type", "text" }`; ya deja reservados `file` y `audio`. Ajustaremos este adaptador a los nombres exactos de la API sin cambiar el resto del sistema.
+La salida hace `POST /v1/messages/send` con `{ "to", "type", "text" }` y admite además `file` o `audio`.
 
 No registrar cuerpos completos, documentos, DNI o CBU en el historial de ejecuciones de producción. Configurar poda de ejecuciones y retención antes de usar datos reales.

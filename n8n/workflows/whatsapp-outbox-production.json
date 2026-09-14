@@ -49,7 +49,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const messages = Array.isArray($json.messages) ? $json.messages : [];\nreturn messages.map((message) => ({ json: { id: message.id, rawBody: JSON.stringify(message.payload) } }));"
+        "jsCode": "const messages = Array.isArray($json.messages) ? $json.messages : [];\nreturn messages.map((message) => ({ json: { id: message.id, rawBody: JSON.stringify({ ...message.payload, idempotency_key: message.id }) } }));"
       },
       "id": "4f69bb1d-208b-4d33-8826-a5f138354be8",
       "name": "Preparar envios",
@@ -71,7 +71,7 @@
         "rawContentType": "application/json",
         "body": "={{ $json.rawBody }}",
         "options": {
-          "timeout": 15000,
+          "timeout": 100000,
           "response": { "response": { "fullResponse": true, "neverError": true, "responseFormat": "json" } }
         }
       },

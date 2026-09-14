@@ -135,6 +135,7 @@ components:
         provider_message_type: {type: string, maxLength: 40}
         text: {type: string, maxLength: 2000}
         media_id: {type: string, maxLength: 500}
+        media_base64: {type: string, maxLength: 8500000, writeOnly: true, description: Base64 de imagen o PDF; máximo decodificado de 6 MiB}
         mime_type: {type: string, maxLength: 100}
         file_name: {type: string, maxLength: 255}
     QuoteRequest:

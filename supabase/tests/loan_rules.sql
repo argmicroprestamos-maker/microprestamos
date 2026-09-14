@@ -1,7 +1,7 @@
 -- Ejecutar con `supabase test db` contra un proyecto local. Todo queda aislado por rollback.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(23);
 
 select is((private.calculate_flat_loan(10000, 10, 3, 0)->>'total_due')::numeric, 11000::numeric, 'flat interest total');
 select is((private.calculate_flat_loan(10000, 10, 3, 0)->>'installment_amount')::numeric, 3666.67::numeric, 'rounded installment');
@@ -24,6 +24,10 @@ select has_table('private', 'whatsapp_outbox', 'WhatsApp delivery outbox is priv
 select has_trigger('private', 'whatsapp_outbox', 'whatsapp_outbox_updated_at', 'outbox timestamps are maintained');
 select has_index('private', 'loans', 'loans_one_open_per_client', 'only one open loan is allowed per client');
 select has_function('private', 'review_whatsapp_application', array['uuid', 'uuid', 'text', 'text'], 'WhatsApp decisions require the reviewed function');
+select ok(has_schema_privilege('service_role', 'private', 'USAGE'), 'service role can reach the private schema');
+select ok(has_table_privilege('service_role', 'private.whatsapp_conversations', 'SELECT'), 'service role can read private integration tables');
+select ok(not has_schema_privilege('anon', 'private', 'USAGE'), 'anonymous users cannot reach the private schema');
+select ok(not has_table_privilege('anon', 'private.whatsapp_conversations', 'SELECT'), 'anonymous users cannot read WhatsApp conversations');
 
 select * from finish();
 rollback;

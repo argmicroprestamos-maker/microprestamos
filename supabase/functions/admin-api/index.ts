@@ -16,7 +16,7 @@ const maskedClient = (value: ClientRow | ClientRow[] | null) => {
 const whatsappCase = (row: { id: string; wa_id: string; state: string; draft: Record<string, unknown>; review_decision?: string | null; created_at: string }) => {
   const draft = row.draft ?? {};
   const dni = text(draft.dni, 20), cbu = text(draft.cbu, 30);
-  const documents = draft.documents && typeof draft.documents === 'object' ? Object.keys(draft.documents as Record<string, unknown>).length : 0;
+  const documentEntries = draft.documents && typeof draft.documents === 'object' ? Object.entries(draft.documents as Record<string, unknown>) : [];
   return {
     id: row.id,
     state: row.state,
@@ -36,7 +36,11 @@ const whatsappCase = (row: { id: string; wa_id: string; state: string; draft: Re
     contact_2: { name: text(draft.contact_2_name, 150), relationship: text(draft.contact_2_relationship, 80), phone: text(draft.contact_2_phone, 30) },
     cbu_masked: cbu ? `***${cbu.slice(-4)}` : null,
     holder_name: text(draft.holder_name, 150),
-    documents_received: documents,
+    documents_received: documentEntries.length,
+    documents: documentEntries.map(([type, value]) => {
+      const document = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+      return { type, storage_path: text(document.storage_path, 500) || null, file_name: text(document.file_name, 255) || null, mime_type: text(document.mime_type, 100) || null };
+    }),
   };
 };
 
@@ -68,7 +72,16 @@ Deno.serve(async (req) => {
   if (req.method === 'GET' && path[0] === 'whatsapp-applications' && path.length === 1) {
     const { data, error } = await admin.schema('private').from('whatsapp_conversations').select('id,wa_id,state,draft,review_decision,created_at').in('state', ['ready_for_review', 'approved', 'rejected']).order('created_at', { ascending: false }).limit(50);
     if (error) return json({ error: 'whatsapp_applications_unavailable' }, 500);
-    return json({ applications: (data ?? []).map((row) => whatsappCase(row as { id: string; wa_id: string; state: string; draft: Record<string, unknown>; review_decision?: string | null; created_at: string })) });
+    const applications = await Promise.all((data ?? []).map(async (row) => {
+      const application = whatsappCase(row as { id: string; wa_id: string; state: string; draft: Record<string, unknown>; review_decision?: string | null; created_at: string });
+      const documents = await Promise.all(application.documents.map(async (document) => {
+        if (!document.storage_path) return { ...document, url: null };
+        const signed = await admin.storage.from('client-documents').createSignedUrl(document.storage_path, 900);
+        return { ...document, url: signed.error ? null : signed.data.signedUrl };
+      }));
+      return { ...application, documents };
+    }));
+    return json({ applications });
   }
 
   if (req.method === 'POST' && path[0] === 'whatsapp-applications' && path[2] === 'decision') {
