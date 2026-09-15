@@ -33,16 +33,19 @@ async function runNotice(requestBody) {
   assert.equal(textResult[0].json.requestBody.text, 'hola');
   assert.match(textResult[0].json.headers.signature, /^[a-f0-9]{64}$/);
 
-  const fileResult = await runAdapter({ data: { message_id: 'm-2', sender: '5491100000000', type: 'file', file: { file_id: 'file-7', base64: 'cGRm', mimetype: 'application/pdf', filename: 'cbu.pdf' } } });
+  const fileResult = await runAdapter({ data: { message_id: 'm-2', sender: '5491100000000', type: 'file', file: { file_id: 'file-7', base64: 'cGRm', mimetype: 'application/pdf', filename: 'cbu.pdf', analysis_base64: '/9g=', analysis_mime_type: 'image/jpeg', analysis_file_name: 'cbu-vista.jpg', analysis_page_count: 2 } } });
   assert.equal(fileResult[0].json.requestBody.message_type, 'document');
   assert.equal(fileResult[0].json.requestBody.media_id, 'file-7');
   assert.equal(fileResult[0].json.requestBody.file_name, 'cbu.pdf');
   assert.equal(fileResult[0].json.requestBody.media_base64, 'cGRm');
+  assert.equal(fileResult[0].json.requestBody.analysis_media_base64, '/9g=');
+  assert.equal(fileResult[0].json.requestBody.analysis_mime_type, 'image/jpeg');
+  assert.equal(fileResult[0].json.requestBody.analysis_page_count, 2);
 
   const noticeResult = await runNotice({ wa_id: '5491100000000', reply_to: '123@lid', message_id: 'm-2', message_type: 'image' });
   const noticeBody = JSON.parse(noticeResult[0].json.rawBody);
   assert.equal(noticeBody.to, '123@lid');
-  assert.match(noticeBody.text, /momento.+valido/i);
+  assert.match(noticeBody.text, /archivo.+momento.+valido/i);
   assert.equal(noticeBody.idempotency_key, 'processing:m-2');
 
   const audioResult = await runAdapter({ id: 'm-3', phone: '5491100000000', type: 'audio', audio: 'http://api.local/media/m-3' });

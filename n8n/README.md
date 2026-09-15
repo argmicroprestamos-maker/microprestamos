@@ -9,8 +9,8 @@ Este módulo inicia el canal asistido de MicroPréstamos. El workflow recibe un 
 3. Si elige WhatsApp, pide consentimiento explícito.
 4. Recopila datos personales, situación laboral, detalle de empleo o actividad e ingreso mensual.
 5. Recopila exactamente dos contactos, CBU y titular.
-6. Solicita DNI frente, DNI dorso y constancia de CBU como imágenes.
-7. DeepSeek valida que cada imagen sea legible y del tipo/lado esperado, y extrae sus datos.
+6. Solicita DNI frente, DNI dorso y constancia de CBU como imágenes o PDF.
+7. DeepSeek valida que cada archivo sea legible y del tipo/lado esperado, y extrae sus datos. Los PDF se convierten a una vista de sus primeras tres páginas para el análisis.
 8. Repite al cliente los datos extraídos; SÍ continúa y NO deriva a revisión humana.
 9. Pide el monto y muestra un resumen enmascarado.
 10. La confirmación deja la solicitud pendiente de aprobación humana.
@@ -43,7 +43,7 @@ Los workflows de producción se importan inactivos y deben permanecer así hasta
 
 ### Contrato integrado
 
-El webhook acepta el objeto emitido por WSP Engine con remitente, identificador único y tipo. Las imágenes incluyen base64, tipo MIME y nombre; la Edge Function las valida con `deepseek-flash` antes de guardarlas en el bucket privado `client-documents`. El límite por adjunto es 6 MiB.
+El webhook acepta el objeto emitido por WSP Engine con remitente, identificador único y tipo. Las imágenes incluyen base64, tipo MIME y nombre. En un PDF, WSP Engine agrega una vista JPEG sólo para el análisis con `deepseek-flash`; la Edge Function conserva el PDF original en el bucket privado `client-documents`. El límite por adjunto original es 6 MiB.
 
 La salida hace `POST /v1/messages/send` con `{ "to", "type", "text" }` y admite además `file` o `audio`.
 

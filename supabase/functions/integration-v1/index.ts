@@ -6,7 +6,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const encoder = new TextEncoder();
 const MAX_AGE_MS = 5 * 60 * 1000;
 const MAX_REQUESTS_PER_MINUTE = 30;
-const MAX_REQUEST_BYTES = 9 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 16 * 1024 * 1024;
 const MAX_MEDIA_BYTES = 6 * 1024 * 1024;
 
 const hex = (bytes: Uint8Array) => Array.from(bytes).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -182,7 +182,7 @@ export function conversationStep(state: string, currentDraft: Record<string, unk
   if (state === 'awaiting_holder_name') { if (text.length < 3) return reply(state, 'Ingresá el nombre completo del titular.'); draft.holder_name = text; return reply('awaiting_dni_front', 'Enviá una foto clara del frente de tu DNI.'); }
   const documentSteps: Record<string, { documentType: string; next: string; prompt: string }> = {
     awaiting_dni_front: { documentType: 'dni_front', next: 'awaiting_dni_back', prompt: 'La foto del frente del DNI fue validada correctamente. Ahora enviá una foto del dorso.' },
-    awaiting_dni_back: { documentType: 'dni_back', next: 'awaiting_cbu_certificate', prompt: 'La foto del dorso del DNI fue validada correctamente. Ahora enviá una constancia de CBU como imagen.' },
+    awaiting_dni_back: { documentType: 'dni_back', next: 'awaiting_cbu_certificate', prompt: 'La foto del dorso del DNI fue validada correctamente. Ahora enviá una constancia de CBU como imagen o PDF.' },
     awaiting_cbu_certificate: { documentType: 'cbu_certificate', next: 'awaiting_extracted_data_confirmation', prompt: '' },
   };
   if (documentSteps[state]) {
@@ -191,7 +191,7 @@ export function conversationStep(state: string, currentDraft: Record<string, unk
     const analysis = input.document_analysis && typeof input.document_analysis === 'object' ? input.document_analysis as DocumentAnalysis : null;
     if (!analysis || analysis.status === 'unavailable') return reply(state, 'No pude validar el documento en este momento. Volvé a enviarlo o escribí ASESOR.');
     if (!analysis.accepted) {
-      if (analysis.reasons.includes('image_required')) return reply(state, 'Para validar los datos necesito que envíes el documento como imagen, no como PDF.');
+      if (analysis.reasons.includes('image_required')) return reply(state, 'No pude procesar ese PDF. Volvé a enviarlo o mandá una imagen clara del documento.');
       if (analysis.reasons.includes('wrong_document_side')) return reply(state, state === 'awaiting_dni_front' ? 'Esa imagen no parece ser el frente del DNI. Enviá el frente.' : 'Esa imagen no parece ser el dorso del DNI. Enviá el dorso.');
       if (analysis.reasons.includes('wrong_document_type')) return reply(state, 'La imagen no corresponde al documento solicitado. Revisala y volvé a enviarla.');
       return reply(state, 'No pude leer claramente los datos del documento. Sacá otra foto con buena luz, sin reflejos y con todo el documento visible.');
@@ -278,7 +278,8 @@ if (import.meta.main) Deno.serve(async (req) => {
     const messageId = normalizedText(body.message_id);
     const messageType = normalizedText(body.message_type) || 'unknown';
     const mediaBase64 = typeof body.media_base64 === 'string' ? body.media_base64 : '';
-    if (!/^\+?[1-9][0-9]{7,14}$/.test(originalWaId) || (replyTo && !/^[1-9][0-9]{7,20}@(c\.us|lid)$/.test(replyTo)) || messageId.length < 1 || messageId.length > 200 || !['text', 'image', 'document', 'interactive', 'unknown'].includes(messageType) || normalizedText(body.text).length > 2_000 || normalizedText(body.media_id).length > 500 || normalizedText(body.mime_type).length > 100 || normalizedText(body.file_name).length > 255 || mediaBase64.length > 8_500_000) return complete({ error: 'invalid_conversation_event' }, 422);
+    const analysisMediaBase64 = typeof body.analysis_media_base64 === 'string' ? body.analysis_media_base64 : '';
+    if (!/^\+?[1-9][0-9]{7,14}$/.test(originalWaId) || (replyTo && !/^[1-9][0-9]{7,20}@(c\.us|lid)$/.test(replyTo)) || messageId.length < 1 || messageId.length > 200 || !['text', 'image', 'document', 'interactive', 'unknown'].includes(messageType) || normalizedText(body.text).length > 2_000 || normalizedText(body.media_id).length > 500 || normalizedText(body.mime_type).length > 100 || normalizedText(body.file_name).length > 255 || normalizedText(body.analysis_mime_type).length > 100 || normalizedText(body.analysis_file_name).length > 255 || mediaBase64.length > 8_500_000 || analysisMediaBase64.length > 5_700_000) return complete({ error: 'invalid_conversation_event' }, 422);
     const conversation = await admin.schema('private').from('whatsapp_conversations').select('id,mode,state,draft,reply_route').eq('wa_id', waId).maybeSingle();
     if (conversation.error) return complete({ error: 'conversation_lookup_failed' }, 500);
     let conversationData = conversation.data;
@@ -296,7 +297,12 @@ if (import.meta.main) Deno.serve(async (req) => {
       let mediaBytes: Uint8Array;
       try { mediaBytes = decodeMedia(mediaBase64); } catch (error) { return complete({ error: error instanceof Error ? error.message : 'invalid_media' }, 422); }
       processedBody.media_id = normalizedText(body.media_id) || messageId;
-      const analysis = await analyzeDocumentImage(mediaBase64, mimeType, documentType);
+      const analysisMimeType = mimeType === 'application/pdf' ? normalizedText(body.analysis_mime_type).toLowerCase() : mimeType;
+      const analysisSource = mimeType === 'application/pdf' ? analysisMediaBase64 : mediaBase64;
+      if (analysisSource) {
+        try { decodeMedia(analysisSource); } catch (error) { return complete({ error: error instanceof Error ? error.message : 'invalid_analysis_media' }, 422); }
+      }
+      const analysis = await analyzeDocumentImage(analysisSource, analysisMimeType, documentType);
       processedBody.document_analysis = analysis;
       if (analysis.accepted) {
         const messageHash = (await sha256(messageId)).slice(0, 24);
@@ -311,6 +317,10 @@ if (import.meta.main) Deno.serve(async (req) => {
         processedBody.storage_path = storagePath;
       }
       delete processedBody.media_base64;
+      delete processedBody.analysis_media_base64;
+      delete processedBody.analysis_mime_type;
+      delete processedBody.analysis_file_name;
+      delete processedBody.analysis_page_count;
     }
     const receipt = await admin.schema('private').from('whatsapp_message_receipts').insert({ external_message_id: messageId, conversation_id: conversationData.id, message_type: messageType });
     if (receipt.error?.code === '23505') return complete({ duplicate: true, conversation: { id: conversationData.id, state: conversationData.state, mode: conversationData.mode }, messages: [] }, 200);
