@@ -38,6 +38,7 @@ Deno.test('records a document already persisted by the integration endpoint', ()
   const result = conversationStep('awaiting_dni_front', {}, { message_type: 'image', media_id: 'whatsapp/case/dni.jpg', storage_path: 'whatsapp/case/dni.jpg', mime_type: 'image/jpeg', file_name: 'dni.jpg', document_analysis: validFrontAnalysis });
   assert(result.action?.type === 'media_stored', 'should not request another download');
   assert(result.state === 'awaiting_dni_back', 'should request DNI back after validation');
+  assert(result.messages[0].text.includes('validada correctamente'), 'should confirm the completed validation');
   const stored = (result.draft.documents as Record<string, { storage_path: string }>).dni_front;
   assert(stored.storage_path === 'whatsapp/case/dni.jpg', 'should retain the private storage path');
 });

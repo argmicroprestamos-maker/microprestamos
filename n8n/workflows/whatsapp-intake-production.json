@@ -28,6 +28,66 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "88816d81-f720-4e32-9f35-cf87c6dfbb72",
+              "leftValue": "={{ ['image', 'document'].includes($json.requestBody.message_type) && Boolean($json.requestBody.media_base64) }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "50a14aca-2879-4337-b39a-a793124a9770",
+      "name": "Es imagen para validar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inbound = $('Adaptar y firmar').first().json.requestBody;\nconst outbound = {\n  to: inbound.reply_to || inbound.wa_id,\n  type: 'text',\n  text: 'Recibí la imagen. Dame un momento mientras valido el documento…',\n  idempotency_key: `processing:${inbound.message_id}`\n};\nreturn [{ json: { rawBody: JSON.stringify(outbound) } }];"
+      },
+      "id": "47632ff3-d037-4620-993b-91f221904d88",
+      "name": "Preparar aviso de validacion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, -120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CUSTOM_WA_API_BASE_URL + $env.CUSTOM_WA_API_SEND_PATH }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "content-type", "value": "application/json" },
+            { "name": "={{ $env.CUSTOM_WA_API_AUTH_HEADER }}", "value": "={{ $env.CUSTOM_WA_API_AUTH_VALUE }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": { "timeout": 100000 }
+      },
+      "id": "d96a6356-b5cb-49b5-b65e-54b9027dab57",
+      "name": "Enviar aviso de validacion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, -120]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_INTEGRATION_URL }}",
         "sendHeaders": true,
@@ -35,23 +95,23 @@
           "parameters": [
             { "name": "content-type", "value": "application/json" },
             { "name": "x-integration-secret", "value": "={{ $env.N8N_SHARED_SECRET }}" },
-            { "name": "x-integration-timestamp", "value": "={{ $json.headers.timestamp }}" },
-            { "name": "x-integration-nonce", "value": "={{ $json.headers.nonce }}" },
-            { "name": "x-integration-signature", "value": "={{ $json.headers.signature }}" },
-            { "name": "idempotency-key", "value": "={{ $json.headers.nonce }}" }
+            { "name": "x-integration-timestamp", "value": "={{ $('Adaptar y firmar').first().json.headers.timestamp }}" },
+            { "name": "x-integration-nonce", "value": "={{ $('Adaptar y firmar').first().json.headers.nonce }}" },
+            { "name": "x-integration-signature", "value": "={{ $('Adaptar y firmar').first().json.headers.signature }}" },
+            { "name": "idempotency-key", "value": "={{ $('Adaptar y firmar').first().json.headers.nonce }}" }
           ]
         },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ $json.rawBody }}",
-        "options": { "timeout": 15000 }
+        "body": "={{ $('Adaptar y firmar').first().json.rawBody }}",
+        "options": { "timeout": 60000 }
       },
       "id": "9dfc7694-0ef1-4a9f-9688-308569253f82",
       "name": "Supabase conversacion",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-240, 0]
+      "position": [480, 0]
     },
     {
       "parameters": {
@@ -61,7 +121,7 @@
       "name": "Preparar salida casera",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [0, 0]
+      "position": [720, 0]
     },
     {
       "parameters": {
@@ -84,13 +144,16 @@
       "name": "Enviar por API casera",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 0]
+      "position": [980, 0]
     }
   ],
   "pinData": {},
   "connections": {
     "Webhook API casera": { "main": [[{ "node": "Adaptar y firmar", "type": "main", "index": 0 }]] },
-    "Adaptar y firmar": { "main": [[{ "node": "Supabase conversacion", "type": "main", "index": 0 }]] },
+    "Adaptar y firmar": { "main": [[{ "node": "Es imagen para validar", "type": "main", "index": 0 }]] },
+    "Es imagen para validar": { "main": [[{ "node": "Preparar aviso de validacion", "type": "main", "index": 0 }], [{ "node": "Supabase conversacion", "type": "main", "index": 0 }]] },
+    "Preparar aviso de validacion": { "main": [[{ "node": "Enviar aviso de validacion", "type": "main", "index": 0 }]] },
+    "Enviar aviso de validacion": { "main": [[{ "node": "Supabase conversacion", "type": "main", "index": 0 }]] },
     "Supabase conversacion": { "main": [[{ "node": "Preparar salida casera", "type": "main", "index": 0 }]] },
     "Preparar salida casera": { "main": [[{ "node": "Enviar por API casera", "type": "main", "index": 0 }]] }
   },

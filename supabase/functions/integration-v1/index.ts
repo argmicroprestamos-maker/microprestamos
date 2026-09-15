@@ -181,8 +181,8 @@ export function conversationStep(state: string, currentDraft: Record<string, unk
   if (state === 'awaiting_cbu') { const cbu = text.replace(/\s/g, ''); if (!isValidCbu(cbu)) return reply(state, 'El CBU no es válido. Revisá los 22 dígitos.'); draft.cbu = cbu; return reply('awaiting_holder_name', 'Escribí el nombre completo del titular de la cuenta.'); }
   if (state === 'awaiting_holder_name') { if (text.length < 3) return reply(state, 'Ingresá el nombre completo del titular.'); draft.holder_name = text; return reply('awaiting_dni_front', 'Enviá una foto clara del frente de tu DNI.'); }
   const documentSteps: Record<string, { documentType: string; next: string; prompt: string }> = {
-    awaiting_dni_front: { documentType: 'dni_front', next: 'awaiting_dni_back', prompt: 'Recibido. Ahora enviá una foto del dorso del DNI.' },
-    awaiting_dni_back: { documentType: 'dni_back', next: 'awaiting_cbu_certificate', prompt: 'Recibido. Enviá una constancia de CBU como imagen.' },
+    awaiting_dni_front: { documentType: 'dni_front', next: 'awaiting_dni_back', prompt: 'La foto del frente del DNI fue validada correctamente. Ahora enviá una foto del dorso.' },
+    awaiting_dni_back: { documentType: 'dni_back', next: 'awaiting_cbu_certificate', prompt: 'La foto del dorso del DNI fue validada correctamente. Ahora enviá una constancia de CBU como imagen.' },
     awaiting_cbu_certificate: { documentType: 'cbu_certificate', next: 'awaiting_extracted_data_confirmation', prompt: '' },
   };
   if (documentSteps[state]) {
